@@ -16,7 +16,11 @@ LC0_DIRECTORY = '/home/crem/dev/lc0/build/debugoptimized'
 COMMAND_LINE = [
     './lc0',
     '--verbose-move-stats',
+    '--move-overhead=10000',
 ]
+
+START_TIME = 115 * 60 * 1000
+INCREMENT_MS = 15000
 
 ############################################################################
 
@@ -34,7 +38,11 @@ class InfoAppender(chess.uci.InfoHandler):
         super().__init__()
 
     def post_info(self):
-        logging.info(repr(self.info))
+        self.info['cp'] = self.info['score'][1].cp
+
+        #if not self.dic['board'].turn:
+        #    self.info['cp'] = -self.info['cp']
+
         if not self.info.get('string'):
             self.dic['info'] = [self.info.copy()] + self.dic['info'][:25]
         super().post_info()
@@ -57,9 +65,14 @@ class Controller:
             'statusbar': "Hi!",
             'engine': False,
             'enginestatus': "Not doing anything",
-            'timedsearch': [False, False],
-            'timer': [100000, 100000],
+            'timedsearch': [True, False],
+            'timer': [START_TIME, START_TIME],
             'info': [],
+            'forcemove': False,
+            'lastmove': [],
+            'nextmove': '',
+            'promotion': 'Q',
+            'commitmove': False,
         }
         self.engine.info_handlers.append(InfoAppender(self.state))
 
@@ -69,6 +82,13 @@ class Controller:
         if self.search:
             self.engine.stop()
 
+        self.state['forcemove'] = False
+
+        if not self.state['engine']:
+            return
+
+        self.state['info'] = [None] + self.state['info'][:25]
+
         board = self.state['board']
         idx = 0 if board.turn else 1
         self.engine.position(board)
@@ -77,8 +97,8 @@ class Controller:
         if self.state['timedsearch'][idx]:
             params['wtime'] = self.state['timer'][0]
             params['btime'] = self.state['timer'][1]
-            params['winc'] = 15000
-            params['binc'] = 15000
+            params['winc'] = INCREMENT_MS
+            params['binc'] = INCREMENT_MS
             self.state['enginestatus'] = "go wtime %d btime %d" % tuple(
                 self.state['timer'])
         else:
@@ -88,7 +108,26 @@ class Controller:
         logging.info("Starting search, params: %s" % repr(params))
         self.search = self.engine.go(async_callback=True, **params)
 
+    def CommitMove(self):
+        self.state['commitmove'] = False
+        nextmove = self.state['nextmove']
+        if len(nextmove) == 4:
+            from_sq = chess.SQUARE_NAMES.index(nextmove[:2])
+            if (self.state['board'].piece_type_at(from_sq) == chess.PAWN
+                    and nextmove[3] in '18'):
+                nextmove += self.state['promotion'].lower()
+
+        self.state['board'].push_uci(nextmove)
+        self.state['lastmove'] = [nextmove[0:2], nextmove[2:4]]
+        self.state['nextmove'] = ''
+        self.StartSearch()
+
     def Update(self):
+        if self.state['commitmove']:
+            self.CommitMove()
+        if self.state['forcemove']:
+            self.engine.stop(async_callback=True)
+            self.state['forcemove'] = False
         if self.state['engine'] and not self.search:
             self.StartSearch()
         if not self.state['engine'] and self.search:
@@ -97,12 +136,32 @@ class Controller:
             self.search = None
             self.state['enginestatus'] = "Stopped."
 
+    def UpdateSearch(self):
+        if not self.search:
+            return
+
+        if not self.search.done():
+            return
+
+        self.state['board'].push(self.search.result().bestmove)
+        self.state['lastmove'] = [
+            chess.SQUARE_NAMES[x] for x in [
+                self.search.result().bestmove.from_square,
+                self.search.result().bestmove.to_square
+            ]
+        ]
+        self.state['nextmove'] = ''
+        logging.info(repr(self.state['lastmove']))
+        self.search = None
+        self.StartSearch()
+
     def Run(self, stdscr):
         self.tui = Tui(stdscr, self.state)
         while True:
             self.tui.Process()
             self.tui.Draw()
             self.Update()
+            self.UpdateSearch()
 
 
 def main():
