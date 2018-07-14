@@ -99,6 +99,7 @@ class Controller:
                 'commitmove': False,
                 'undo': False,
             }
+        self.state['lasttimestamp'] = datetime.datetime.now()
         self.engine.info_handlers.append(InfoAppender(self.state))
 
     def SaveState(self):
