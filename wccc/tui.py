@@ -6,6 +6,8 @@ import datetime
 PIECES_UNICODE = '♙♘♗♖♕♔'
 PIECES_STR = 'PNBRQK'
 
+BLACK_PIECES = 232
+
 # Colors:
 # Default = 0
 # WhiteOnDark = 1
@@ -425,16 +427,16 @@ class Tui:
         self.state = state
         self.scr = stdscr
         curses.mousemask(curses.BUTTON1_CLICKED)
-        curses.init_pair(1, 15, 94)  # White piece on dark square
-        curses.init_pair(2, 15, 172)  # White on bright
-        curses.init_pair(3, 16, 94)  # Black on dark
-        curses.init_pair(4, 16, 172)  # Black on bright
-        curses.init_pair(5, 16, 12)  # Status bar
+        curses.init_pair(1, 15, 2)  # White piece on dark square
+        curses.init_pair(2, 15, 3)  # White on bright
+        curses.init_pair(3, BLACK_PIECES, 2)  # Black on dark
+        curses.init_pair(4, BLACK_PIECES, 3)  # Black on bright
+        curses.init_pair(5, 0, 12)  # Status bar
         curses.init_pair(6, 15, 9)  # [FAIL]
         curses.init_pair(7, 15, 2)  # [OK]
         curses.init_pair(8, 9, 0)  # Logo
-        curses.init_pair(9, 231, 0)  # Bright white on black
-        curses.init_pair(10, 10, 16)  # Past move from/to marker, move text
+        curses.init_pair(9, 14, 0)  # Bright white on black
+        curses.init_pair(10, 10, 0)  # Past move from/to marker, move text
         curses.init_pair(11, 9, 4)  # Move selector from/to marker
 
         curses.halfdelay(1)
