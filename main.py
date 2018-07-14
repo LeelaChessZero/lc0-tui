@@ -4,7 +4,6 @@ import os.path
 import logging
 import chess
 import chess.uci
-import subprocess
 import curses
 import datetime
 from wccc.tui import Tui
@@ -16,8 +15,23 @@ from wccc.tui import Tui
 LC0_DIRECTORY = '/home/crem/dev/lc0/build/debugoptimized'
 COMMAND_LINE = [
     './lc0',
-    '--verbose-move-stats',
-    '--move-overhead=10000',
+    '--verbose-move-stats',  # Please keep it! Adds useful data into logs.
+    '--move-overhead=10000',  # 10 seconds move overhead. Recommended to keep it.
+    '--threads=8',
+    '--cpuct=3.02',
+    '--fpu-reduction=0.52',
+    '--policy-softmax-temp=1.68',
+    '--backend=multiplexing',
+    '--minibatch-size=128',
+    ('--backend-opts='
+     '(backend=cudnn-fp16,gpu=0),'
+     '(backend=cudnn-fp16,gpu=1),'
+     '(backend=cudnn-fp16,gpu=2),'
+     '(backend=cudnn-fp16,gpu=3),'
+     '(backend=cudnn-fp16,gpu=4),'
+     '(backend=cudnn-fp16,gpu=5),'
+     '(backend=cudnn-fp16,gpu=6),'
+     '(backend=cudnn-fp16,gpu=7)'),
 ]
 
 START_TIME = 115 * 60 * 1000
@@ -93,7 +107,10 @@ class Controller:
 
         if (self.state['board'].is_checkmate()
                 or self.state['board'].is_stalemate()):
+            logging.info("Terminal position, not searching")
             return
+
+        logging.info("Starting search")
 
         self.state['info'] = [None] + self.state['info'][:27]
 
@@ -128,12 +145,14 @@ class Controller:
         idx = 0 if self.state['board'].turn else 1
         self.state['timer'][idx] += INCREMENT_MS
         self.state['movetimer'][1 - idx] = 0
+        logging.info("Manually adding move %s" % nextmove)
         self.state['board'].push_uci(nextmove)
         self.state['nextmove'] = ''
         self.StartSearch()
 
     def Update(self):
         if self.state['undo']:
+            logging.info("Undo move")
             self.state['undo'] = False
             if self.state['board'].move_stack:
                 idx = 0 if self.state['board'].turn else 1
@@ -146,12 +165,13 @@ class Controller:
         if self.state['commitmove']:
             self.CommitMove()
         if self.state['forcemove']:
+            logging.info("Forcemove, sending stop")
             self.engine.stop(async_callback=True)
             self.state['forcemove'] = False
         if self.state['engine'] and not self.search:
             self.StartSearch()
         if not self.state['engine'] and self.search:
-            logging.info("Stopped search manually")
+            logging.info("Aborted search manually")
             self.engine.stop()
             self.search = None
             self.state['enginestatus'] = "Stopped."

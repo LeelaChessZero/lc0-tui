@@ -399,7 +399,7 @@ class Status(Widget):
         super().__init__(parent, state, 4, 45, 1, 44)
 
     def Draw(self):
-        self.win.addstr(0, 0, "Status: ")
+        self.win.addstr(0, 0, "Status: ", curses.color_pair(9))
         if self.state['board'].is_checkmate():
             self.win.addstr("[ CHECKMATE ]", curses.color_pair(7))
         elif self.state['board'].is_stalemate():
@@ -415,7 +415,7 @@ class Status(Widget):
         else:
             self.win.addstr("game is not finished.")
         self.win.clrtoeol()
-        self.win.addstr(1, 0, "Halfmoves clock:")
+        self.win.addstr(1, 0, "Halfmoves clock:", curses.color_pair(9))
         self.win.addstr("%3d" % self.state['board'].halfmove_clock)
         super().Draw()
 
@@ -466,7 +466,6 @@ class Tui:
         x = self.scr.getch()
         if x == -1:
             return
-        logging.info(x)
         if x == curses.KEY_MOUSE:
             try:
                 mouse = curses.getmouse()
