@@ -6,6 +6,7 @@ import chess
 import chess.uci
 import subprocess
 import curses
+import datetime
 from wccc.tui import Tui
 
 ############################################################################
@@ -62,17 +63,21 @@ class Controller:
         self.state = {
             'board': chess.Board(),
             'flipped': False,
-            'statusbar': "Hi!",
+            'statusbar': "",
             'engine': False,
             'enginestatus': "Not doing anything",
             'timedsearch': [True, False],
             'timer': [START_TIME, START_TIME],
+            'movetimer': [0, 0],
+            'timerenabled': False,
+            'lasttimestamp': None,
             'info': [],
             'forcemove': False,
             'lastmove': [],
             'nextmove': '',
             'promotion': 'Q',
             'commitmove': False,
+            'undo': False,
         }
         self.engine.info_handlers.append(InfoAppender(self.state))
 
@@ -117,12 +122,32 @@ class Controller:
                     and nextmove[3] in '18'):
                 nextmove += self.state['promotion'].lower()
 
+        idx = 0 if self.state['board'].turn else 1
+        self.state['timer'][idx] += INCREMENT_MS
+        self.state['movetimer'][1 - idx] = 0
         self.state['board'].push_uci(nextmove)
         self.state['lastmove'] = [nextmove[0:2], nextmove[2:4]]
         self.state['nextmove'] = ''
         self.StartSearch()
 
     def Update(self):
+        if self.state['undo']:
+            self.state['undo'] = False
+            if self.state['board'].move_stack:
+                idx = 0 if self.state['board'].turn else 1
+                self.state['timer'][1 - idx] -= INCREMENT_MS
+                self.state['movetimer'][1 - idx] = 0
+                self.state['board'].pop()
+                self.state['nextmove'] = ''
+                if self.state['board'].move_stack:
+                    self.state['lastmove'] = [
+                        self.state['board'].peek().from_square,
+                        self.state['board'].peek().to_square,
+                    ]
+                else:
+                    self.state['lastmove'] = []
+
+                self.StartSearch()
         if self.state['commitmove']:
             self.CommitMove()
         if self.state['forcemove']:
@@ -136,6 +161,17 @@ class Controller:
             self.search = None
             self.state['enginestatus'] = "Stopped."
 
+    def UpdateTimer(self):
+        if not self.state['timerenabled']:
+            return
+        newtime = datetime.datetime.now()
+        idx = 0 if self.state['board'].turn else 1
+        delta = (newtime - self.state['lasttimestamp']
+                 ) / datetime.timedelta(milliseconds=1)
+        self.state['timer'][idx] -= delta
+        self.state['movetimer'][idx] += delta
+        self.state['lasttimestamp'] = newtime
+
     def UpdateSearch(self):
         if not self.search:
             return
@@ -143,6 +179,9 @@ class Controller:
         if not self.search.done():
             return
 
+        idx = 0 if self.state['board'].turn else 1
+        self.state['timer'][idx] += INCREMENT_MS
+        self.state['movetimer'][1 - idx] = 0
         self.state['board'].push(self.search.result().bestmove)
         self.state['lastmove'] = [
             chess.SQUARE_NAMES[x] for x in [
@@ -158,6 +197,7 @@ class Controller:
     def Run(self, stdscr):
         self.tui = Tui(stdscr, self.state)
         while True:
+            self.UpdateTimer()
             self.tui.Process()
             self.tui.Draw()
             self.Update()

@@ -1,6 +1,7 @@
 import curses
 import logging
 import chess
+import datetime
 
 PIECES_UNICODE = '♙♘♗♖♕♔'
 PIECES_STR = 'PNBRQK'
@@ -35,7 +36,7 @@ class HelpPane(Widget):
     def Draw(self):
         self.win.addstr(0, 0, "(Tab) to flip the board")
         self.win.addstr(1, 0, "(Shift+1) to force move")
-        # self.win.addstr(2, 0, "(Shift+U) to undo the move")
+        self.win.addstr(2, 0, "(Shift+U) to undo the move")
         super().Draw()
 
 
@@ -133,6 +134,9 @@ class ChessBoard(Widget):
             return True
         if key == ord('!'):
             self.state['forcemove'] = True
+            return True
+        if key == ord('U'):
+            self.state['undo'] = True
             return True
 
 
@@ -291,6 +295,74 @@ class MoveInput(Widget):
         return False
 
 
+class Timer(Widget):
+    def __init__(self, parent, state):
+        super().__init__(parent, state, 15, 30, 4, 43)
+
+    def Draw(self):
+        self.win.addstr(0, 0, "Timer (Shift+T): ")
+        if self.state['timerenabled']:
+            self.win.addstr("[ ACTIVE  ]", curses.color_pair(7))
+        else:
+            self.win.addstr("[ STOPPED ]", curses.color_pair(6))
+        self.win.addstr(1, 5, "Time", curses.color_pair(9))
+        self.win.addstr(1, 15, "Move", curses.color_pair(9))
+        for i in range(2):
+            idx = i if self.state['flipped'] else 1 - i
+            tim = int(self.state['timer'][idx] / 1000)
+            neg = tim < 0
+            if neg:
+                tim = -tim
+            mt = int(self.state['movetimer'][idx] / 1000)
+            s = "  %s%1d:%02d:%02d %5d:%02d  " % (
+                ('-' if neg else ' '),
+                tim // 60 // 60,
+                (tim // 60) % 60,
+                (tim % 60),
+                mt // 60,
+                mt % 60,
+            )
+            self.win.addstr(
+                2 + i, 0, s,
+                curses.color_pair(10 if ((
+                    idx == 0) == self.state['board'].turn) else 0))
+        self.win.addstr(5, 0, "Adjust opponent clock:", curses.color_pair(9))
+        self.win.addstr(6, 0, "(9) / (0)    -/+ 1 second")
+        self.win.addstr(7, 0, "(Shift+same) -/+ 20 seconds")
+        self.win.addstr(8, 0, "(o) / (p)    -/+ 5 minutes")
+        self.win.addstr(10, 0, "Adjust our clock:", curses.color_pair(9))
+        self.win.addstr(11, 0, "(-) / (=)    -/+ 1 second")
+        self.win.addstr(12, 0, "(Shift+same) -/+ 20 seconds")
+        self.win.addstr(13, 0, "([) / (])    -/+ 5 minutes")
+
+        super().Draw()
+
+    def OnKey(self, key):
+        if key == ord('T'):
+            self.state['timerenabled'] = not self.state['timerenabled']
+            self.state['lasttimestamp'] = datetime.datetime.now()
+            return True
+        keys = [
+            ('-', False, -1),
+            ('=', False, 1),
+            ('_', False, -20),
+            ('+', False, 20),
+            ('[', False, -60 * 5),
+            (']', False, 60 * 5),
+            ('9', True, -1),
+            ('0', True, 1),
+            ('(', True, -20),
+            (')', True, 20),
+            ('o', True, -60 * 5),
+            ('p', True, 60 * 5),
+        ]
+        for x in keys:
+            if key == ord(x[0]):
+                idx = 0 if self.state['flipped'] == x[1] else 1
+                self.state['timer'][idx] += x[2] * 1000
+                return True
+
+
 class Tui:
     def __init__(self, stdscr, state):
         self.state = state
@@ -317,6 +389,7 @@ class Tui:
             ChessBoard(stdscr, state),
             StatusBar(stdscr, state),
             Engine(stdscr, state),
+            Timer(stdscr, state),
             Info(stdscr, state),
             Promotions(stdscr, state),
             MoveInput(stdscr, state),
@@ -334,6 +407,7 @@ class Tui:
         x = self.scr.getch()
         if x == -1:
             return
+        logging.info(x)
         if x == curses.KEY_MOUSE:
             try:
                 mouse = curses.getmouse()
