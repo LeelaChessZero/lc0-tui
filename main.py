@@ -155,10 +155,15 @@ class Controller:
                 nextmove += self.state['promotion'].lower()
 
         idx = 0 if self.state['board'].turn else 1
+        logging.info("Manually adding move %s" % nextmove)
+        try:
+            self.state['board'].push_uci(nextmove)
+        except:
+            logging.exception("Bad move: %s" % nextmove)
+            return
+
         self.state['timer'][idx] += INCREMENT_MS
         self.state['movetimer'][1 - idx] = 0
-        logging.info("Manually adding move %s" % nextmove)
-        self.state['board'].push_uci(nextmove)
         self.state['nextmove'] = ''
         self.StartSearch()
 
