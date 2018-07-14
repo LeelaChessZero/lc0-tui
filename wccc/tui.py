@@ -175,7 +175,7 @@ class Logo(Widget):
 
 class Engine(Widget):
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 5, 1, 89)
+        super().__init__(parent, state, 4, 46, 1, 89)
 
     def Draw(self):
         self.win.addstr(0, 0, "Engine: ")
