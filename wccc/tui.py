@@ -279,7 +279,7 @@ class MoveInput(Widget):
 
     def OnKey(self, key):
         st = self.state['nextmove']
-        if key == 127:  # Backspace
+        if key in [127, 263]:  # Backspace
             self.state['nextmove'] = self.state['nextmove'][:-1]
             return True
         if key == 10 and len(st) >= 4:
