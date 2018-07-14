@@ -91,6 +91,10 @@ class Controller:
         if not self.state['engine']:
             return
 
+        if (self.state['board'].is_checkmate()
+                or self.state['board'].is_stalemate()):
+            return
+
         self.state['info'] = [None] + self.state['info'][:27]
 
         board = self.state['board']

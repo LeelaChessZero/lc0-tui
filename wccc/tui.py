@@ -243,7 +243,7 @@ class Promotions(Widget):
 
 class Info(Widget):
     def __init__(self, parent, state):
-        super().__init__(parent, state, 30, 55, 5, 88)
+        super().__init__(parent, state, 30, 57, 5, 88)
 
     def Draw(self):
         self.win.addstr(0, 1, "Depth Score   Nps     Nodes   Pv ",
@@ -375,7 +375,7 @@ class Timer(Widget):
 
 class MoveList(Widget):
     def __init__(self, parent, state):
-        super().__init__(parent, state, 31, 30, 4, 73)
+        super().__init__(parent, state, 31, 15, 4, 73)
 
     def Draw(self):
         self.win.addstr(0, 3, "Moves:", curses.color_pair(9))
@@ -391,6 +391,32 @@ class MoveList(Widget):
         for (i, x) in enumerate(res[-29:]):
             self.win.addstr(i + 1, 0, "%2d. %-5s %-5s" % tuple(x))
         self.win.clrtobot()
+        super().Draw()
+
+
+class Status(Widget):
+    def __init__(self, parent, state):
+        super().__init__(parent, state, 4, 45, 1, 44)
+
+    def Draw(self):
+        self.win.addstr(0, 0, "Status: ")
+        if self.state['board'].is_checkmate():
+            self.win.addstr("[ CHECKMATE ]", curses.color_pair(7))
+        elif self.state['board'].is_stalemate():
+            self.win.addstr("[ DRAW: STALEMATE ]", curses.color_pair(7))
+        elif self.state['board'].is_insufficient_material():
+            self.win.addstr("[ DRAW: NO MATERIAL ]", curses.color_pair(7))
+        elif self.state['board'].can_claim_fifty_moves():
+            self.win.addstr("[ DRAW POSSIBLE: FIFTY MOVES ]",
+                            curses.color_pair(6))
+        elif self.state['board'].can_claim_threefold_repetition():
+            self.win.addstr("[ DRAW POSSIBLE: THREEFOLD REP ]",
+                            curses.color_pair(6))
+        else:
+            self.win.addstr("game is not finished.")
+        self.win.clrtoeol()
+        self.win.addstr(1, 0, "Halfmoves clock:")
+        self.win.addstr("%3d" % self.state['board'].halfmove_clock)
         super().Draw()
 
 
@@ -417,6 +443,7 @@ class Tui:
         self.widgets = [
             Logo(stdscr, state),
             HelpPane(stdscr, state),
+            Status(stdscr, state),
             ChessBoard(stdscr, state),
             StatusBar(stdscr, state),
             Engine(stdscr, state),
