@@ -6,7 +6,11 @@ import datetime
 PIECES_UNICODE = '♙♘♗♖♕♔'
 PIECES_STR = 'PNBRQK'
 
-BLACK_PIECES = 232
+# Change thouse to 0..15 if youo have 16-color palette
+BLACK_PIECES = 232  # 0
+WHITE_PIECES = 15
+DARK_SQUARES = 94  # 2
+LIGHT_SQUARES = 172  # 3
 
 # Colors:
 # Default = 0
@@ -427,10 +431,11 @@ class Tui:
         self.state = state
         self.scr = stdscr
         curses.mousemask(curses.BUTTON1_CLICKED)
-        curses.init_pair(1, 15, 2)  # White piece on dark square
-        curses.init_pair(2, 15, 3)  # White on bright
-        curses.init_pair(3, BLACK_PIECES, 2)  # Black on dark
-        curses.init_pair(4, BLACK_PIECES, 3)  # Black on bright
+        curses.init_pair(1, WHITE_PIECES,
+                         DARK_SQUARES)  # White piece on dark square
+        curses.init_pair(2, WHITE_PIECES, LIGHT_SQUARES)  # White on bright
+        curses.init_pair(3, BLACK_PIECES, DARK_SQUARES)  # Black on dark
+        curses.init_pair(4, BLACK_PIECES, LIGHT_SQUARES)  # Black on bright
         curses.init_pair(5, 0, 12)  # Status bar
         curses.init_pair(6, 15, 9)  # [FAIL]
         curses.init_pair(7, 15, 2)  # [OK]
