@@ -6,6 +6,7 @@ import chess
 import chess.uci
 import curses
 import datetime
+import pickle
 from wccc.tui import Tui
 
 ############################################################################
@@ -73,28 +74,37 @@ class Controller:
         logging.info("Engine name: %s" % self.engine.name)
         print("Initializing engine...")
         self.engine.ucinewgame()
+        self.search = None
 
-        self.state = {
-            'board': chess.Board(),
-            'flipped': False,
-            'statusbar': "",
-            'engine': False,
-            'enginestatus': "Not doing anything",
-            'timedsearch': [True, False],
-            'timer': [START_TIME, START_TIME],
-            'movetimer': [0, 0],
-            'timerenabled': False,
-            'lasttimestamp': None,
-            'info': [],
-            'forcemove': False,
-            'nextmove': '',
-            'promotion': 'Q',
-            'commitmove': False,
-            'undo': False,
-        }
+        try:
+            self.state = {}
+            with open(os.path.join(DATA_DIR, 'state.bin'), 'rb') as f:
+                self.state = pickle.load(f)
+        except:
+            self.state = {
+                'board': chess.Board(),
+                'flipped': False,
+                'statusbar': "",
+                'engine': False,
+                'enginestatus': "Not doing anything",
+                'timedsearch': [True, False],
+                'timer': [START_TIME, START_TIME],
+                'movetimer': [0, 0],
+                'timerenabled': False,
+                'lasttimestamp': None,
+                'info': [],
+                'forcemove': False,
+                'nextmove': '',
+                'promotion': 'Q',
+                'commitmove': False,
+                'undo': False,
+            }
         self.engine.info_handlers.append(InfoAppender(self.state))
 
-        self.search = None
+    def SaveState(self):
+        logging.info("Saving state")
+        with open(os.path.join(DATA_DIR, 'state.bin'), 'wb') as f:
+            pickle.dump(self.state, f)
 
     def StartSearch(self):
         if self.search:
@@ -111,6 +121,7 @@ class Controller:
             return
 
         logging.info("Starting search")
+        self.SaveState()
 
         self.state['info'] = [None] + self.state['info'][:27]
 
@@ -135,6 +146,7 @@ class Controller:
 
     def CommitMove(self):
         self.state['commitmove'] = False
+        self.SaveState()
         nextmove = self.state['nextmove']
         if len(nextmove) == 4:
             from_sq = chess.SQUARE_NAMES.index(nextmove[:2])
@@ -154,6 +166,7 @@ class Controller:
         if self.state['undo']:
             logging.info("Undo move")
             self.state['undo'] = False
+            self.SaveState()
             if self.state['board'].move_stack:
                 idx = 0 if self.state['board'].turn else 1
                 self.state['timer'][1 - idx] -= INCREMENT_MS
@@ -165,9 +178,10 @@ class Controller:
         if self.state['commitmove']:
             self.CommitMove()
         if self.state['forcemove']:
-            logging.info("Forcemove, sending stop")
-            self.engine.stop(async_callback=True)
             self.state['forcemove'] = False
+            logging.info("Forcemove, sending stop")
+            self.SaveState()
+            self.engine.stop(async_callback=True)
         if self.state['engine'] and not self.search:
             self.StartSearch()
         if not self.state['engine'] and self.search:
@@ -175,6 +189,7 @@ class Controller:
             self.engine.stop()
             self.search = None
             self.state['enginestatus'] = "Stopped."
+            self.SaveState()
 
     def UpdateTimer(self):
         if not self.state['timerenabled']:
