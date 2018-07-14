@@ -47,6 +47,15 @@ class ChessBoard(Widget):
     def Draw(self):
         flipped = self.state['flipped']
 
+        lastmove = []
+        if self.state['board'].move_stack:
+            lastmove = [
+                chess.SQUARE_NAMES[x] for x in [
+                    self.state['board'].peek().from_square, self.state['board']
+                    .peek().to_square
+                ]
+            ]
+
         def DrawCell(cell):
             rank_idx = ord(cell[0]) - ord('a')
             file_idx = ord(cell[1]) - ord('1')
@@ -75,7 +84,7 @@ class ChessBoard(Widget):
                             attr + curses.A_BOLD)
             self.win.addstr(row + 2, col, ' ' * 5, attr)
 
-            if cell in self.state['lastmove']:
+            if cell in lastmove:
                 self.win.addstr(row + 0, col, '+---+', curses.color_pair(10))
                 self.win.addstr(row + 1, col, '|', curses.color_pair(10))
                 self.win.addstr(row + 1, col + 4, '|', curses.color_pair(10))
@@ -164,7 +173,7 @@ class Logo(Widget):
 
 class Engine(Widget):
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 60, 1, 80)
+        super().__init__(parent, state, 4, 55, 1, 89)
 
     def Draw(self):
         self.win.addstr(0, 0, "Engine: ")
@@ -234,10 +243,10 @@ class Promotions(Widget):
 
 class Info(Widget):
     def __init__(self, parent, state):
-        super().__init__(parent, state, 30, 60, 5, 80)
+        super().__init__(parent, state, 30, 55, 5, 88)
 
     def Draw(self):
-        self.win.addstr(0, 0, "Depth Score   Nps     Nodes   Pv ",
+        self.win.addstr(0, 1, "Depth Score   Nps     Nodes   Pv ",
                         curses.color_pair(9))
 
         infos = self.state['info']
@@ -245,13 +254,14 @@ class Info(Widget):
             info = infos[i]
 
             if info is None:
-                st = '=' * 55
+                st = '=' * 54
             else:
                 st = "%2d/%2d %5d %7d %9d %s" % (
                     info['depth'], info['seldepth'], info['cp'], info['nps'],
                     info['nodes'], ' '.join([str(x) for x in info['pv'][1]]))
 
-            self.win.addstr(i + 1, 0, st[:55])
+            self.win.addstr(i + 1, 0, st[:50])
+            self.win.clrtoeol()
         super().Draw()
 
 
@@ -363,6 +373,27 @@ class Timer(Widget):
                 return True
 
 
+class MoveList(Widget):
+    def __init__(self, parent, state):
+        super().__init__(parent, state, 31, 30, 4, 73)
+
+    def Draw(self):
+        self.win.addstr(0, 3, "Moves:", curses.color_pair(9))
+        res = []
+        brd = self.state['board'].root()
+        for x in self.state['board'].move_stack:
+            if not res or res[-1][0] != brd.fullmove_number:
+                res.append([brd.fullmove_number, '', ''])
+            move = brd.san(x)
+            brd.push(x)
+            res[-1][2 if brd.turn else 1] = move
+
+        for (i, x) in enumerate(res[-29:]):
+            self.win.addstr(i + 1, 0, "%2d. %-5s %-5s" % tuple(x))
+        self.win.clrtobot()
+        super().Draw()
+
+
 class Tui:
     def __init__(self, stdscr, state):
         self.state = state
@@ -391,6 +422,7 @@ class Tui:
             Engine(stdscr, state),
             Timer(stdscr, state),
             Info(stdscr, state),
+            MoveList(stdscr, state),
             Promotions(stdscr, state),
             MoveInput(stdscr, state),
         ]

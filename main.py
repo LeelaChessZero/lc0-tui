@@ -45,7 +45,7 @@ class InfoAppender(chess.uci.InfoHandler):
         #    self.info['cp'] = -self.info['cp']
 
         if not self.info.get('string'):
-            self.dic['info'] = [self.info.copy()] + self.dic['info'][:25]
+            self.dic['info'] = [self.info.copy()] + self.dic['info'][:27]
         super().post_info()
 
 
@@ -54,7 +54,7 @@ class Controller:
         os.chdir(LC0_DIRECTORY)
         logging.info("Starting engine %s" % repr(COMMAND_LINE))
         self.engine = chess.uci.popen_engine(
-            COMMAND_LINE, stderr=subprocess.DEVNULL)
+            COMMAND_LINE)  #, stderr=subprocess.DEVNULL)
         self.engine.uci()
         logging.info("Engine name: %s" % self.engine.name)
         print("Initializing engine...")
@@ -73,7 +73,6 @@ class Controller:
             'lasttimestamp': None,
             'info': [],
             'forcemove': False,
-            'lastmove': [],
             'nextmove': '',
             'promotion': 'Q',
             'commitmove': False,
@@ -92,7 +91,7 @@ class Controller:
         if not self.state['engine']:
             return
 
-        self.state['info'] = [None] + self.state['info'][:25]
+        self.state['info'] = [None] + self.state['info'][:27]
 
         board = self.state['board']
         idx = 0 if board.turn else 1
@@ -126,7 +125,6 @@ class Controller:
         self.state['timer'][idx] += INCREMENT_MS
         self.state['movetimer'][1 - idx] = 0
         self.state['board'].push_uci(nextmove)
-        self.state['lastmove'] = [nextmove[0:2], nextmove[2:4]]
         self.state['nextmove'] = ''
         self.StartSearch()
 
@@ -139,13 +137,6 @@ class Controller:
                 self.state['movetimer'][1 - idx] = 0
                 self.state['board'].pop()
                 self.state['nextmove'] = ''
-                if self.state['board'].move_stack:
-                    self.state['lastmove'] = [
-                        self.state['board'].peek().from_square,
-                        self.state['board'].peek().to_square,
-                    ]
-                else:
-                    self.state['lastmove'] = []
 
                 self.StartSearch()
         if self.state['commitmove']:
@@ -183,14 +174,7 @@ class Controller:
         self.state['timer'][idx] += INCREMENT_MS
         self.state['movetimer'][1 - idx] = 0
         self.state['board'].push(self.search.result().bestmove)
-        self.state['lastmove'] = [
-            chess.SQUARE_NAMES[x] for x in [
-                self.search.result().bestmove.from_square,
-                self.search.result().bestmove.to_square
-            ]
-        ]
         self.state['nextmove'] = ''
-        logging.info(repr(self.state['lastmove']))
         self.search = None
         self.StartSearch()
 
