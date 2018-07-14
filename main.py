@@ -198,14 +198,13 @@ class Controller:
             self.SaveState()
 
     def UpdateTimer(self):
-        if not self.state['timerenabled']:
-            return
         newtime = datetime.datetime.now()
-        idx = 0 if self.state['board'].turn else 1
-        delta = (newtime - self.state['lasttimestamp']
-                 ) / datetime.timedelta(milliseconds=1)
-        self.state['timer'][idx] -= delta
-        self.state['movetimer'][idx] += delta
+        if self.state['timerenabled']:
+            idx = 0 if self.state['board'].turn else 1
+            delta = (newtime - self.state['lasttimestamp']
+                     ) / datetime.timedelta(milliseconds=1)
+            self.state['timer'][idx] -= delta
+            self.state['movetimer'][idx] += delta
         self.state['lasttimestamp'] = newtime
 
     def UpdateSearch(self):
