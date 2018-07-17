@@ -436,7 +436,8 @@ class MoveReady(Widget):
                 self.win.addstr(x, 0, " MOVE READY!!!!!!!!!!!!!!!!! ",
                                 curses.color_pair(7))
         else:
-            self.win.erase()
+            for x in range(14):
+                self.win.addstr(x, 0, "                             ")
         super().Draw()
 
     def OnKey(self, key):
