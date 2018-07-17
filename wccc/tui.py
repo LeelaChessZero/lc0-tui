@@ -426,6 +426,24 @@ class Status(Widget):
         super().Draw()
 
 
+class MoveReady(Widget):
+    def __init__(self, parent, state):
+        super().__init__(parent, state, 15, 30, 20, 43)
+
+    def Draw(self):
+        if self.state['moveready']:
+            for x in range(14):
+                self.win.addstr(x, 0, " MOVE READY!!!!!!!!!!!!!!!!! ",
+                                curses.color_pair(7))
+        else:
+            self.win.erase()
+        super().Draw()
+
+    def OnKey(self, key):
+        self.state['moveready'] = False
+        return False
+
+
 class Tui:
     def __init__(self, stdscr, state):
         self.state = state
@@ -448,6 +466,7 @@ class Tui:
         self.scr.clear()
 
         self.widgets = [
+            MoveReady(stdscr, state),
             Logo(stdscr, state),
             HelpPane(stdscr, state),
             Status(stdscr, state),

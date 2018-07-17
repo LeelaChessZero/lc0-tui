@@ -100,6 +100,7 @@ class Controller:
                 'lasttimestamp': None,
                 'info': [],
                 'forcemove': False,
+                'moveready': False,
                 'nextmove': '',
                 'promotion': 'Q',
                 'commitmove': False,
@@ -148,6 +149,9 @@ class Controller:
                     self.state['timer'][idx] += INCREMENT_MS
                     self.state['movetimer'][1 - idx] = 0
                     self.state['nextmove'] = ''
+                    curses.flash()
+                    curses.beep()
+                    self.state['moveready'] = True
                     self.StartSearch()
                     return
                 except IndexError:
@@ -235,6 +239,9 @@ class Controller:
         if not self.search.done():
             return
 
+        curses.flash()
+        curses.beep()
+        self.state['moveready'] = True
         idx = 0 if self.state['board'].turn else 1
         self.state['timer'][idx] += INCREMENT_MS
         self.state['movetimer'][1 - idx] = 0
