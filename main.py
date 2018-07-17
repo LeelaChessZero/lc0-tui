@@ -4,6 +4,7 @@ import os.path
 import logging
 import chess
 import chess.uci
+import chess.polyglot
 import curses
 import datetime
 import pickle
@@ -37,6 +38,7 @@ COMMAND_LINE = [
 
 START_TIME = 105 * 60 * 1000
 INCREMENT_MS = 5000
+OPENING_BOOK = "WCCCbook.bin"
 
 ############################################################################
 
@@ -75,6 +77,10 @@ class Controller:
         print("Initializing engine...")
         self.engine.ucinewgame()
         self.search = None
+        self.opening_book = None
+        if OPENING_BOOK:
+            self.opening_book = chess.polyglot.open_reader(
+                os.path.join(BASE_DIR, OPENING_BOOK))
 
         try:
             self.state = {}
@@ -132,6 +138,21 @@ class Controller:
 
         params = {}
         if self.state['timedsearch'][idx]:
+            if self.opening_book:
+                try:
+                    entry = self.opening_book.weighted_choice(
+                        self.state['board'])
+                    logging.info("Opening book hit: %s" % str(entry.move()))
+                    idx = 0 if self.state['board'].turn else 1
+                    self.state['board'].push(entry.move())
+                    self.state['timer'][idx] += INCREMENT_MS
+                    self.state['movetimer'][1 - idx] = 0
+                    self.state['nextmove'] = ''
+                    self.StartSearch()
+                    return
+                except IndexError:
+                    pass
+
             params['wtime'] = self.state['timer'][0]
             params['btime'] = self.state['timer'][1]
             params['winc'] = INCREMENT_MS
