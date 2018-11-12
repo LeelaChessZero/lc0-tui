@@ -252,7 +252,7 @@ class Info(Widget):
         super().__init__(parent, state, 30, 52, 5, 88)
 
     def Draw(self):
-        self.win.addstr(0, 1, "Depth Score   Nps     Nodes   Pv ",
+        self.win.addstr(0, 0, "#  Depth Score   Nps     Nodes   Pv ",
                         curses.color_pair(9))
 
         infos = self.state['info']
@@ -262,11 +262,14 @@ class Info(Widget):
             if info is None:
                 st = '=' * 54
             else:
-                st = "%2d/%2d %5d %7d %9d %s" % (
-                    info['depth'], info['seldepth'], info['cp'], info['nps'],
-                    info['nodes'], ' '.join([str(x) for x in info['pv'][1]]))
+                pv = info['pv'][info['multipv']]
+                cp = info['score'][info['multipv']].cp
+                st = "%1d %2d/%2d %5d %7d %9d %s" % (
+                    info['multipv'],
+                    info['depth'], info['seldepth'], cp, info['nps'],
+                    info['nodes'], ' '.join([str(x) for x in pv]))
 
-            self.win.addstr(i + 1, 0, st[:50])
+            self.win.addstr(i + 1, 0, st[:51])
             self.win.clrtoeol()
         super().Draw()
 
