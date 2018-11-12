@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 
 import os.path
 import logging
@@ -8,36 +8,38 @@ import chess.polyglot
 import curses
 import datetime
 import pickle
+import copy
+import threading
 from wccc.tui import Tui
 
 ############################################################################
 # Config
 ############################################################################
 
-LC0_DIRECTORY = '/home/crem/dev/lc0/build/debugoptimized'
+#LC0_DIRECTORY = '/home/fhuizing/Workspace/chess/lc0/build/release'
+LC0_DIRECTORY = '/home/crem/lc0/build/release'
+
 COMMAND_LINE = [
     './lc0',
-    '--verbose-move-stats',  # Please keep it! Adds useful data into logs.
-    '--move-overhead=10000',  # 10 seconds move overhead. Recommended to keep it.
-    '--threads=8',
-    '--cpuct=3.02',
-    '--fpu-reduction=0.52',
-    '--policy-softmax-temp=1.68',
+    '--multipv=7',
+    '--score-type=win_percentage',
+    '--weights=/home/fhuizing/Workspace/chess/wccc-tui/data/11248.pb.gz',
+    '--threads=6',
+    '--minibatch-size=256',
+    '--max-collision-events=32',
+    '--nncache=10000000',
+    '--logfile=/home/fhuizing/Workspace/chess/wccc-tui/data/lc0.log',
     '--backend=multiplexing',
-    '--minibatch-size=128',
+    '--verbose-move-stats',
     ('--backend-opts='
-     '(backend=cudnn-fp16,gpu=0),'
-     '(backend=cudnn-fp16,gpu=1),'
-     '(backend=cudnn-fp16,gpu=2),'
-     '(backend=cudnn-fp16,gpu=3),'
-     '(backend=cudnn-fp16,gpu=4),'
-     '(backend=cudnn-fp16,gpu=5),'
-     '(backend=cudnn-fp16,gpu=6),'
-     '(backend=cudnn-fp16,gpu=7)'),
+     '(backend=cudnn,gpu=0),'
+     '(backend=cudnn,gpu=1),'
+     ),
+    '--cpuct=3.8'
 ]
 
 START_TIME = 105 * 60 * 1000
-INCREMENT_MS = 5000
+INCREMENT_MS = 30000
 OPENING_BOOK = "WCCCbook.bin"
 
 ############################################################################
@@ -50,19 +52,22 @@ LOG_FORMAT = ('%(levelname).1s%(asctime)s.%(msecs)03d %(name)s '
 LOG_DATE_FORMAT = '%m%d %H:%M:%S'
 
 
+LOCK = threading.Lock()
+
 class InfoAppender(chess.uci.InfoHandler):
     def __init__(self, dic):
         self.dic = dic
         super().__init__()
 
     def post_info(self):
-        self.info['cp'] = self.info['score'][1].cp
-
+      with LOCK:
         #if not self.dic['board'].turn:
         #    self.info['cp'] = -self.info['cp']
 
         if not self.info.get('string'):
-            self.dic['info'] = [self.info.copy()] + self.dic['info'][:27]
+            if self.info['multipv'] == 1:
+               self.dic['info'].insert(0, None)
+            self.dic['info'] = [copy.deepcopy(self.info)] + self.dic['info'][:27]
         super().post_info()
 
 
