@@ -54,21 +54,23 @@ LOG_DATE_FORMAT = '%m%d %H:%M:%S'
 
 LOCK = threading.Lock()
 
+
 class InfoAppender(chess.uci.InfoHandler):
     def __init__(self, dic):
         self.dic = dic
         super().__init__()
 
     def post_info(self):
-      with LOCK:
-        #if not self.dic['board'].turn:
-        #    self.info['cp'] = -self.info['cp']
+        with LOCK:
+            # if not self.dic['board'].turn:
+            #    self.info['cp'] = -self.info['cp']
 
-        if not self.info.get('string'):
-            if self.info['multipv'] == 1:
-               self.dic['info'].insert(0, None)
-            self.dic['info'] = [copy.deepcopy(self.info)] + self.dic['info'][:27]
-        super().post_info()
+            if not self.info.get('string'):
+                if self.info['multipv'] == 1:
+                    self.dic['info'].insert(0, None)
+                self.dic['info'] = [copy.deepcopy(
+                    self.info)] + self.dic['info'][:27]
+            super().post_info()
 
 
 class Controller:
@@ -76,7 +78,7 @@ class Controller:
         os.chdir(LC0_DIRECTORY)
         logging.info("Starting engine %s" % repr(COMMAND_LINE))
         self.engine = chess.uci.popen_engine(
-            COMMAND_LINE)  #, stderr=subprocess.DEVNULL)
+            COMMAND_LINE)  # , stderr=subprocess.DEVNULL)
         self.engine.uci()
         logging.info("Engine name: %s" % self.engine.name)
         print("Initializing engine...")
