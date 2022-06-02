@@ -12,7 +12,7 @@ WHITE_PIECES = 15
 DARK_SQUARES = 94  # 2
 LIGHT_SQUARES = 172  # 3
 
-# Colors:
+# Colors:q
 # Default = 0
 # WhiteOnDark = 1
 # WhiteOnBright = 2
@@ -262,11 +262,11 @@ class Info(Widget):
             if info is None:
                 st = '=' * 54
             else:
-                pv = info['pv'][info['multipv']]
-                cp = info['score'][info['multipv']].cp
-                st = "%1d %2d/%2d %5d %7d %9d %s" % (
+                pv = info['pv']
+                cp = str(info['score'])
+                st = "%1d %2d/%2d %5s %7d %9d %s" % (
                     info['multipv'],
-                    info['depth'], info['seldepth'], cp, info['nps'],
+                    info['depth'], info['seldepth'], cp, info.get('nps', 0),
                     info['nodes'], ' '.join([str(x) for x in pv]))
 
             self.win.addstr(i + 1, 0, st[:51])
