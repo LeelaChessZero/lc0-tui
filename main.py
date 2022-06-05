@@ -10,48 +10,9 @@ import datetime
 import pickle
 import threading
 from wccc.tui import Tui
-
-############################################################################
-# Config
-############################################################################
-
-#LC0_DIRECTORY = '/home/fhuizing/Workspace/chess/lc0/build/release'
-LC0_DIRECTORY = '/home/crem/dev/lc0.wt0/build/release'
+from wccc.config import *
 
 MULTIPV = 12
-
-COMMAND_LINE = [
-    './lc0',
-    '--backend=trivial',
-    # '--backend=cuda',
-    '--show-wdl',
-    '--show-movesleft',
-    f'--logfile={os.path.abspath(".")}/data/lc0.log',
-    '--per-pv-counters',
-    '--preload',
-    # '--multipv=7',
-    # '--score-type=win_percentage',
-    # '--weights=/home/fhuizing/Workspace/chess/wccc-tui/data/11248.pb.gz',
-    # '--threads=6',
-    # '--minibatch-size=256',
-    # '--max-collision-events=32',
-    # '--nncache=10000000',
-    # '--logfile=/home/fhuizing/Workspace/chess/wccc-tui/data/lc0.log',
-    # '--backend=multiplexing',
-    # '--verbose-move-stats',
-    # ('--backend-opts='
-    #  '(backend=cudnn,gpu=0),'
-    #  '(backend=cudnn,gpu=1),'
-    #  ),
-    # '--cpuct=3.8'
-]
-
-START_TIME = 1 * 60
-INCREMENT = 1
-OPENING_BOOK = "WCCCbook.bin"
-
-############################################################################
-
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 
@@ -104,7 +65,9 @@ class Controller:
                 'nps': 0,
                 'depth': 0,
                 'seldepth': 0,
-                'thinking': {}
+                'thinking': {},
+                'autocommitenabled': False,
+                'movenotify': False,
             }
         self.state['lasttimestamp'] = datetime.datetime.now()
         # self.engine.info_handlers.append(InfoAppender(self.state))
@@ -190,6 +153,7 @@ class Controller:
         logging.info("Manually adding move %s" % nextmove)
         try:
             self.state['board'].push_uci(nextmove)
+            self.state['move_info'].append(self.GetBestWdl())
         except:
             logging.exception("Bad move: %s" % nextmove)
             return
