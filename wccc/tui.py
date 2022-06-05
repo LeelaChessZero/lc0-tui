@@ -2,8 +2,10 @@ import curses
 import logging
 import chess
 import datetime
+from . import progressbar
 
-PIECES_UNICODE = '♙♘♗♖♕♔'
+#PIECES_UNICODE = '♙♘♗♖♕♔'
+PIECES_UNICODE = '♟♞♝♜♛♚'
 PIECES_STR = 'PNBRQK'
 
 # Change thouse to 0..15 if youo have 16-color palette
@@ -12,7 +14,16 @@ WHITE_PIECES = 15
 DARK_SQUARES = 94  # 2
 LIGHT_SQUARES = 172  # 3
 
-# Colors:
+SCREEN_WIDTH = 168
+SCREEN_HEIGHT = 42
+
+BLACK_BG = 237
+DRAW_BG = 245
+WHITE_BG = 231
+BLACK_TEXT = 0
+WHITE_TEXT = 231
+
+# Colors:q
 # Default = 0
 # WhiteOnDark = 1
 # WhiteOnBright = 2
@@ -20,7 +31,28 @@ LIGHT_SQUARES = 172  # 3
 # BlackOnBright = 4
 
 
+def RoundDouble(x, digits):
+    if x >= 10**digits:
+        return str(int(x))
+    res = str(x)[:digits]
+    if res[-1] == '.':
+        res = res[:-1]
+    return res
+
+
+def ShortenNum(num, max_len):
+    max_num = 10**(max_len - 1)
+    if num < max_num * 10:
+        return RoundDouble(num, max_len)
+    for s in 'KMBTQ':
+        num /= 1000
+        if num < max_num:
+            return RoundDouble(num, max_len - 1) + s
+    return 'inf'
+
+
 class Widget:
+
     def __init__(self, parent, state, rows, cols, row, col):
         self.state = state
         self.win = parent.subwin(rows, cols, row, col)
@@ -35,20 +67,39 @@ class Widget:
         return False
 
 
-class HelpPane(Widget):
+class Background(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 39, 1, 14)
+        super().__init__(parent, state, SCREEN_HEIGHT, SCREEN_WIDTH + 1, 0, 0)
 
     def Draw(self):
-        self.win.addstr(0, 0, "(Tab) to flip the board")
-        self.win.addstr(1, 0, "(Shift+1) to force move")
-        self.win.addstr(2, 0, "(Shift+U) to undo the move")
+        if self.state['moveready']:
+            self.win.bkgd(' ', curses.color_pair(18))
+        else:
+            self.win.bkgd(' ', curses.color_pair(0))
+        super().Draw()
+
+
+class HelpPane(Widget):
+
+    def __init__(self, parent, state):
+        super().__init__(parent, state, 3, 60, 40, 2)
+
+    def Draw(self):
+        self.win.addstr(
+            0, 0, "(Shift+1) to force move    "
+            "(Tab) to flip the board")
+        self.win.addstr(1, 0, "(Shift+U) to undo the move")
         super().Draw()
 
 
 class ChessBoard(Widget):
+    CELL_WIDTH = 7
+    CELL_HEIGHT = 3
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 3 * 8 + 1, 5 * 8 + 1, 4, 1)
+        super().__init__(parent, state, self.CELL_HEIGHT * 8 + 1,
+                         self.CELL_WIDTH * 8 + 1, 8, 1)
 
     def Draw(self):
         flipped = self.state['flipped']
@@ -57,8 +108,8 @@ class ChessBoard(Widget):
         if self.state['board'].move_stack:
             lastmove = [
                 chess.SQUARE_NAMES[x] for x in [
-                    self.state['board'].peek().from_square, self.state['board']
-                    .peek().to_square
+                    self.state['board'].peek().from_square,
+                    self.state['board'].peek().to_square
                 ]
             ]
 
@@ -72,38 +123,42 @@ class ChessBoard(Widget):
             color = piece is not None and piece.color
 
             if piece:
-                val = (PIECES_UNICODE[piece.piece_type - 1] + ' ' +
-                       PIECES_STR[piece.piece_type - 1])
+                val = (f' {PIECES_UNICODE[piece.piece_type - 1]}'
+                       f' {PIECES_STR[piece.piece_type - 1]} ')
             else:
-                val = '   '
+                val = ' ' * (self.CELL_WIDTH - 2)
 
             if color:
                 attr = curses.color_pair(1 if is_dark else 2)
             else:
                 attr = curses.color_pair(3 if is_dark else 4)
 
-            row = (file_idx if flipped else 7 - file_idx) * 3
-            col = (7 - rank_idx if flipped else rank_idx) * 5 + 1
+            row = (file_idx if flipped else 7 - file_idx) * self.CELL_HEIGHT
+            col = (7 - rank_idx if flipped else rank_idx) * self.CELL_WIDTH + 1
 
-            self.win.addstr(row + 0, col, ' ' * 5, attr)
+            self.win.addstr(row + 0, col, ' ' * self.CELL_WIDTH, attr)
             self.win.addstr(row + 1, col, ' ' + val + ' ',
                             attr + curses.A_BOLD)
-            self.win.addstr(row + 2, col, ' ' * 5, attr)
+            self.win.addstr(row + 2, col, ' ' * self.CELL_WIDTH, attr)
 
             if cell in lastmove:
-                self.win.addstr(row + 0, col, '+---+', curses.color_pair(10))
+                hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
+                self.win.addstr(row + 0, col, hor, curses.color_pair(10))
                 self.win.addstr(row + 1, col, '|', curses.color_pair(10))
-                self.win.addstr(row + 1, col + 4, '|', curses.color_pair(10))
-                self.win.addstr(row + 2, col, '+---+', curses.color_pair(10))
+                self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '|',
+                                curses.color_pair(10))
+                self.win.addstr(row + 2, col, hor, curses.color_pair(10))
 
             if cell in [
                     self.state['nextmove'][0:2],
                     self.state['nextmove'][2:4],
             ]:
-                self.win.addstr(row + 0, col + 1, '---', curses.color_pair(11))
+                hor = '-' * (self.CELL_WIDTH - 2)
+                self.win.addstr(row + 0, col + 1, hor, curses.color_pair(11))
                 self.win.addstr(row + 1, col, '|', curses.color_pair(11))
-                self.win.addstr(row + 1, col + 4, '|', curses.color_pair(11))
-                self.win.addstr(row + 2, col + 1, '---', curses.color_pair(11))
+                self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '|',
+                                curses.color_pair(11))
+                self.win.addstr(row + 2, col + 1, hor, curses.color_pair(11))
 
         self.win.erase()
         files = '12345678'
@@ -111,8 +166,11 @@ class ChessBoard(Widget):
 
         for i in range(8):
             idx = i if flipped else 7 - i
-            self.win.addstr(i * 3 + 1, 0, files[idx], curses.color_pair(0))
-            self.win.addstr(8 * 3, i * 5 + 3, ranks[idx], curses.color_pair(0))
+            self.win.addstr(i * self.CELL_HEIGHT + 1, 0, files[idx],
+                            curses.color_pair(0))
+            self.win.addstr(8 * self.CELL_HEIGHT,
+                            i * self.CELL_WIDTH + (self.CELL_WIDTH // 2 + 1),
+                            ranks[idx], curses.color_pair(0))
 
         for rank in ranks:
             for file in files:
@@ -122,8 +180,8 @@ class ChessBoard(Widget):
     def OnMouse(self, mouse):
         x = mouse[1] - self.win.getbegyx()[1]
         y = mouse[2] - self.win.getbegyx()[0]
-        row = y // 3
-        col = (x - 1) // 5
+        row = y // self.CELL_HEIGHT
+        col = (x - 1) // self.CELL_WIDTH
         if row < 0 or row >= 8 or col < 0 or col >= 8:
             return False
         ranks = 'abcdefgh'
@@ -139,7 +197,10 @@ class ChessBoard(Widget):
         if piece and piece.color == side_to_move:
             self.state['nextmove'] = square
         elif len(self.state['nextmove']) >= 2:
-            self.state['nextmove'] = self.state['nextmove'][:2] + square
+            if self.state['nextmove'][2:4] == square:
+                self.state['commitmove'] = True
+            else:
+                self.state['nextmove'] = self.state['nextmove'][:2] + square
 
         return True
 
@@ -156,17 +217,19 @@ class ChessBoard(Widget):
 
 
 class StatusBar(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 1, 140, 35, 0)
+        super().__init__(parent, state, 1, SCREEN_WIDTH + 2, SCREEN_HEIGHT, 0)
 
     def Draw(self):
         self.win.bkgdset(' ', curses.color_pair(5))
-        self.win.addstr(0, 0, " %-138s" % self.state['statusbar'])
+        self.win.addstr(0, 0, f" %-{SCREEN_WIDTH}s" % self.state['statusbar'])
         self.win.noutrefresh()
         super().Draw()
 
 
 class Logo(Widget):
+
     def __init__(self, parent, state):
         super().__init__(parent, state, 3, 10, 0, 2)
 
@@ -178,8 +241,9 @@ class Logo(Widget):
 
 
 class Engine(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 46, 1, 89)
+        super().__init__(parent, state, 4, 46, 1, 59)
 
     def Draw(self):
         self.win.addstr(0, 0, "Engine: ")
@@ -215,8 +279,9 @@ class Engine(Widget):
 
 
 class Promotions(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 39, 32, 1)
+        super().__init__(parent, state, 4, 39, 36, 2)
 
     def Draw(self):
         prom = self.state['promotion']
@@ -247,36 +312,57 @@ class Promotions(Widget):
         return True
 
 
-class Info(Widget):
+class Thinking(Widget):
+    NUM_MOVES = 12
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 30, 52, 5, 88)
+        super().__init__(parent, state, self.NUM_MOVES * 3 + 1, 47, 5, 59)
 
     def Draw(self):
-        self.win.addstr(0, 0, "#  Depth Score   Nps     Nodes   Pv ",
-                        curses.color_pair(9))
+        self.win.addstr(0, 0, "Move  Nodes", curses.color_pair(9))
 
-        infos = self.state['info']
-        for i in range(len(infos)):
-            info = infos[i]
+        moveses = self.state['thinking'].get('curr', {}).get('moves', {})
+        moves = sorted(moveses.keys(),
+                       key=lambda x: (moveses[x]['nodes'], x),
+                       reverse=True)[:self.NUM_MOVES]
 
-            if info is None:
-                st = '=' * 54
-            else:
-                pv = info['pv'][info['multipv']]
-                cp = info['score'][info['multipv']].cp
-                st = "%1d %2d/%2d %5d %7d %9d %s" % (
-                    info['multipv'],
-                    info['depth'], info['seldepth'], cp, info['nps'],
-                    info['nodes'], ' '.join([str(x) for x in pv]))
+        max_n = 1
+        if moves:
+            max_n = moveses[moves[0]]['nodes'] or 1
 
-            self.win.addstr(i + 1, 0, st[:51])
-            self.win.clrtoeol()
+        for i, m in enumerate(moves):
+            move = moveses[m]
+            san = self.state['board'].san(chess.Move.from_uci(m))
+            self.win.addstr(i * 3 + 1, 0, f"{san:6}")
+            progressbar.ProgressBar(win=self.win,
+                                    width=31,
+                                    value=move['nodes'],
+                                    max_value=max_n,
+                                    text=f'N={move["nodes"]}',
+                                    bar_color=19,
+                                    remainder_color=20,
+                                    text_color=21)
+
+            prev = self.state['thinking'].get('prev', {})
+            if 'moves' in prev and m in prev['moves']:
+                prev_move = prev['moves'][m]
+                delta = int(move['nodes'] - prev_move['nodes']) / (
+                    self.state['thinking']['curr']['time'] -
+                    self.state['thinking']['prev']['time'])
+                self.win.addstr(f" +{ShortenNum(delta, 4)}/s".ljust(8))
+            self.win.move(i * 3 + 2, 0)
+            progressbar.WdlBar(self.win, 45, move['wdl'].wins,
+                               move['wdl'].draws, move['wdl'].losses, 12, 13,
+                               14, 15, 16, 17)
+            self.win.addstr(i * 3 + 3, 0, " " * 45)
+        self.win.clrtobot()
         super().Draw()
 
 
 class MoveInput(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 2, 39, 30, 1)
+        super().__init__(parent, state, 2, 39, 34, 2)
 
     def Draw(self):
         self.win.addstr(1, 15, "(Enter) to commit move.")
@@ -315,24 +401,25 @@ class MoveInput(Widget):
 
 
 class Timer(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 15, 30, 4, 43)
+        super().__init__(parent, state, 25, 56, 4, 1)
 
     def Draw(self):
-        self.win.addstr(0, 0, "Timer (Shift+T): ")
+        self.win.addstr(0, 5, "Time", curses.color_pair(9))
+        self.win.addstr(0, 15, "Move", curses.color_pair(9))
+        self.win.addstr("    Timer (Shift+T): ")
         if self.state['timerenabled']:
             self.win.addstr("[ ACTIVE  ]", curses.color_pair(7))
         else:
             self.win.addstr("[ STOPPED ]", curses.color_pair(6))
-        self.win.addstr(1, 5, "Time", curses.color_pair(9))
-        self.win.addstr(1, 15, "Move", curses.color_pair(9))
         for i in range(2):
             idx = i if self.state['flipped'] else 1 - i
-            tim = int(self.state['timer'][idx] / 1000)
+            tim = int(self.state['timer'][idx])
             neg = tim < 0
             if neg:
                 tim = -tim
-            mt = int(self.state['movetimer'][idx] / 1000)
+            mt = int(self.state['movetimer'][idx])
             s = "  %s%1d:%02d:%02d %5d:%02d  " % (
                 ('-' if neg else ' '),
                 tim // 60 // 60,
@@ -342,17 +429,11 @@ class Timer(Widget):
                 mt % 60,
             )
             self.win.addstr(
-                2 + i, 0, s,
+                1 + i, 0, s,
                 curses.color_pair(10 if ((
                     idx == 0) == self.state['board'].turn) else 0))
-        self.win.addstr(5, 0, "Adjust opponent clock:", curses.color_pair(9))
-        self.win.addstr(6, 0, "(9) / (0)    -/+ 1 second")
-        self.win.addstr(7, 0, "(Shift+same) -/+ 20 seconds")
-        self.win.addstr(8, 0, "(o) / (p)    -/+ 5 minutes")
-        self.win.addstr(10, 0, "Adjust our clock:", curses.color_pair(9))
-        self.win.addstr(11, 0, "(-) / (=)    -/+ 1 second")
-        self.win.addstr(12, 0, "(Shift+same) -/+ 20 seconds")
-        self.win.addstr(13, 0, "([) / (])    -/+ 5 minutes")
+        self.win.addstr(1, 23, "(9/0)±1s (Shift+9/0)±20s (o/p)±5m")
+        self.win.addstr(2, 23, "(-/=)±1s (Shift+-/=)±20s ([/])±5m")
 
         super().Draw()
 
@@ -378,34 +459,45 @@ class Timer(Widget):
         for x in keys:
             if key == ord(x[0]):
                 idx = 0 if self.state['flipped'] == x[1] else 1
-                self.state['timer'][idx] += x[2] * 1000
+                self.state['timer'][idx] += x[2]
                 return True
 
 
 class MoveList(Widget):
+    NUM_PLY = 40
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 31, 15, 4, 73)
+        super().__init__(parent, state, 1 + self.NUM_PLY, 65, 1, 104)
 
     def Draw(self):
         self.win.addstr(0, 3, "Moves:", curses.color_pair(9))
         res = []
         brd = self.state['board'].root()
-        for x in self.state['board'].move_stack:
-            if not res or res[-1][0] != brd.fullmove_number:
-                res.append([brd.fullmove_number, '', ''])
+        for x, y in zip(self.state['board'].move_stack,
+                        self.state['move_info']):
+            if brd.turn == chess.WHITE:
+                hdr = '%3d.' % brd.fullmove_number
+            else:
+                hdr = '  ...'
             move = brd.san(x)
             brd.push(x)
-            res[-1][2 if brd.turn else 1] = move
+            res.append((hdr + move, y))
 
-        for (i, x) in enumerate(res[-29:]):
-            self.win.addstr(i + 1, 0, "%2d. %-5s %-5s" % tuple(x))
+        for i, (move, info) in enumerate(res[-self.NUM_PLY:]):
+            self.win.addstr(i + 1, 0, "%-12s" % move)
+            if isinstance(info, str):
+                self.win.addstr(info.ljust(52))
+            else:
+                progressbar.WdlBar(self.win, 52, info.wins, info.draws,
+                                   info.losses, 12, 13, 14, 15, 16, 17)
         self.win.clrtobot()
         super().Draw()
 
 
 class Status(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 45, 1, 44)
+        super().__init__(parent, state, 4, 45, 1, 15)
 
     def Draw(self):
         self.win.addstr(0, 0, "Status: ", curses.color_pair(9))
@@ -424,31 +516,41 @@ class Status(Widget):
         else:
             self.win.addstr("game is not finished.")
         self.win.clrtoeol()
-        self.win.addstr(1, 0, "Halfmoves clock:", curses.color_pair(9))
+        self.win.addstr(1, 0, "Rule50 ply:", curses.color_pair(9))
         self.win.addstr("%3d" % self.state['board'].halfmove_clock)
+        self.win.addstr("   Depth:", curses.color_pair(9))
+        self.win.addstr(
+            "%2d/%-3d" %
+            (self.state.get('depth', 0), self.state.get('seldepth', 0)))
+        self.win.addstr("  NPS:", curses.color_pair(9))
+        self.win.addstr("%7d" % self.state.get('nps', 0))
         super().Draw()
 
 
 class MoveReady(Widget):
+
     def __init__(self, parent, state):
-        super().__init__(parent, state, 15, 30, 20, 43)
+        super().__init__(parent, state, 30, 47, 18, 59)
 
     def Draw(self):
         if self.state['moveready']:
-            for x in range(14):
-                self.win.addstr(x, 0, " MOVE READY!!!!!!!!!!!!!!!!! ",
-                                curses.color_pair(7))
-        else:
-            for x in range(14):
-                self.win.addstr(x, 0, "                             ")
+            for x in range(23):
+                self.win.addstr(
+                    x, 0, " MOVE READY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ",
+                    curses.color_pair(7))
         super().Draw()
 
     def OnKey(self, key):
         self.state['moveready'] = False
         return False
 
+    def OnMouse(self, mouse):
+        self.state['moveready'] = False
+        return False
+
 
 class Tui:
+
     def __init__(self, stdscr, state):
         self.state = state
         self.scr = stdscr
@@ -466,11 +568,24 @@ class Tui:
         curses.init_pair(10, 10, 0)  # Past move from/to marker, move text
         curses.init_pair(11, 9, 4)  # Move selector from/to marker
 
+        curses.init_pair(12, BLACK_TEXT, WHITE_BG)  # White block
+        curses.init_pair(13, WHITE_TEXT, DRAW_BG)  # Draw block
+        curses.init_pair(14, WHITE_TEXT, BLACK_BG)  # Black block
+        curses.init_pair(15, WHITE_BG, DRAW_BG)  # Black to draw
+        curses.init_pair(16, DRAW_BG, BLACK_BG)  # Draw to white
+        curses.init_pair(17, WHITE_BG, BLACK_BG)  # Black to white
+
+        curses.init_pair(18, 0, 156)  # Background
+
+        curses.init_pair(19, 231, 56)  # Progress bar
+        curses.init_pair(20, 56, 0)  # Progress bar remoinder
+        curses.init_pair(21, 231, 0)  # Progress bar text
+
         curses.halfdelay(1)
         self.scr.clear()
 
         self.widgets = [
-            MoveReady(stdscr, state),
+            # Background(stdscr, state),
             Logo(stdscr, state),
             HelpPane(stdscr, state),
             Status(stdscr, state),
@@ -478,9 +593,10 @@ class Tui:
             StatusBar(stdscr, state),
             Engine(stdscr, state),
             Timer(stdscr, state),
-            Info(stdscr, state),
+            Thinking(stdscr, state),
             MoveList(stdscr, state),
             Promotions(stdscr, state),
+            # MoveReady(stdscr, state),
             MoveInput(stdscr, state),
         ]
 
