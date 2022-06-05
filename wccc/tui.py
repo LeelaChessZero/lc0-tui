@@ -87,10 +87,28 @@ class HelpPane(Widget):
 
     def Draw(self):
         self.win.addstr(
-            0, 0, "(Shift+1) to force move    "
-            "(Tab) to flip the board")
-        self.win.addstr(1, 0, "(Shift+U) to undo the move")
+            0, 0, "(Shift+1) force    (Shift+U) undo    (Tab) flip")
+        self.win.addstr(1, 0, "Autocommit (Shift+A): ")
+        if self.state['autocommitenabled']:
+            self.win.addstr("[ ON  ]", curses.color_pair(6))
+        else:
+            self.win.addstr("[ OFF ]", curses.color_pair(7))
+        self.win.addstr("  Notify (Shift+M): ")
+        if self.state['movenotify']:
+            self.win.addstr("[ ON  ]", curses.color_pair(7))
+        else:
+            self.win.addstr("[ OFF ]", curses.color_pair(6))
+
         super().Draw()
+
+    def OnKey(self, key):
+        if key == ord('A'):  # Shift+A
+            self.state['autocommitenabled'] = not self.state['autocommitenabled']
+            return True
+        if key == ord('M'):  # Shift+M
+            self.state['movenotify'] = not self.state['movenotify']
+            return True
+        return False
 
 
 class ChessBoard(Widget):
@@ -197,10 +215,9 @@ class ChessBoard(Widget):
         if piece and piece.color == side_to_move:
             self.state['nextmove'] = square
         elif len(self.state['nextmove']) >= 2:
-            if self.state['nextmove'][2:4] == square:
+            self.state['nextmove'] = self.state['nextmove'][:2] + square
+            if self.state['autocommitenabled']:
                 self.state['commitmove'] = True
-            else:
-                self.state['nextmove'] = self.state['nextmove'][:2] + square
 
         return True
 
@@ -475,6 +492,7 @@ class MoveList(Widget):
         brd = self.state['board'].root()
         for x, y in zip(self.state['board'].move_stack,
                         self.state['move_info']):
+            logging.info((x,y))
             if brd.turn == chess.WHITE:
                 hdr = '%3d.' % brd.fullmove_number
             else:
@@ -533,6 +551,8 @@ class MoveReady(Widget):
         super().__init__(parent, state, 30, 47, 18, 59)
 
     def Draw(self):
+        if not self.state['movenotify']:
+            return
         if self.state['moveready']:
             for x in range(23):
                 self.win.addstr(
@@ -596,7 +616,7 @@ class Tui:
             Thinking(stdscr, state),
             MoveList(stdscr, state),
             Promotions(stdscr, state),
-            # MoveReady(stdscr, state),
+            MoveReady(stdscr, state),
             MoveInput(stdscr, state),
         ]
 
