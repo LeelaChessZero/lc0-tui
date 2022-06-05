@@ -93,15 +93,15 @@ def WdlBar(win, width, w, d, l, white_bar, draw_bar, black_bar, white_to_draw,
         if white_width < label_length(lw): continue
         if draw_width < label_length(ld): continue
         if black_width < label_length(lb): continue
-        draw_meat(lw, white_width, 12)
+        draw_meat(lw, white_width, white_bar)
         if white_bits % 8 > 0:
             win.addstr(
                 BLOCK_UNICODE[white_bits % 8],
                 curses.color_pair(
                     white_to_draw if draw_bits > 0 else white_to_black))
-        draw_meat(ld, draw_width, 13)
+        draw_meat(ld, draw_width, draw_bar)
         if draw_bits and (white_bits + draw_bits) % 8 > 0:
-            win.addstr(BLOCK_UNICODE[white_bits % 8],
+            win.addstr(BLOCK_UNICODE[(white_bits + draw_bits) % 8],
                        curses.color_pair(draw_to_black))
-        draw_meat(lb, black_width, 14)
+        draw_meat(lb, black_width, black_bar)
         return

@@ -73,7 +73,10 @@ class Background(Widget):
         super().__init__(parent, state, SCREEN_HEIGHT, SCREEN_WIDTH + 1, 0, 0)
 
     def Draw(self):
-        #self.win.bkgd(' ', curses.color_pair(18))
+        if self.state['moveready']:
+            self.win.bkgd(' ', curses.color_pair(18))
+        else:
+            self.win.bkgd(' ', curses.color_pair(0))
         super().Draw()
 
 
@@ -313,7 +316,7 @@ class Thinking(Widget):
     NUM_MOVES = 12
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, self.NUM_MOVES * 3 + 2, 47, 5, 59)
+        super().__init__(parent, state, self.NUM_MOVES * 3 + 1, 47, 5, 59)
 
     def Draw(self):
         self.win.addstr(0, 0, "Move  Nodes", curses.color_pair(9))
@@ -341,7 +344,7 @@ class Thinking(Widget):
                                     text_color=21)
 
             prev = self.state['thinking'].get('prev', {})
-            if m in prev['moves']:
+            if 'moves' in prev and m in prev['moves']:
                 prev_move = prev['moves'][m]
                 delta = int(move['nodes'] - prev_move['nodes']) / (
                     self.state['thinking']['curr']['time'] -
@@ -351,6 +354,8 @@ class Thinking(Widget):
             progressbar.WdlBar(self.win, 45, move['wdl'].wins,
                                move['wdl'].draws, move['wdl'].losses, 12, 13,
                                14, 15, 16, 17)
+            self.win.addstr(i * 3 + 3, 0, " " * 45)
+        self.win.clrtobot()
         super().Draw()
 
 
@@ -410,11 +415,11 @@ class Timer(Widget):
             self.win.addstr("[ STOPPED ]", curses.color_pair(6))
         for i in range(2):
             idx = i if self.state['flipped'] else 1 - i
-            tim = int(self.state['timer'][idx] / 1000)
+            tim = int(self.state['timer'][idx])
             neg = tim < 0
             if neg:
                 tim = -tim
-            mt = int(self.state['movetimer'][idx] / 1000)
+            mt = int(self.state['movetimer'][idx])
             s = "  %s%1d:%02d:%02d %5d:%02d  " % (
                 ('-' if neg else ' '),
                 tim // 60 // 60,
@@ -454,28 +459,37 @@ class Timer(Widget):
         for x in keys:
             if key == ord(x[0]):
                 idx = 0 if self.state['flipped'] == x[1] else 1
-                self.state['timer'][idx] += x[2] * 1000
+                self.state['timer'][idx] += x[2]
                 return True
 
 
 class MoveList(Widget):
+    NUM_PLY = 40
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 31, 15, 1, 110)
+        super().__init__(parent, state, 1 + self.NUM_PLY, 65, 1, 104)
 
     def Draw(self):
         self.win.addstr(0, 3, "Moves:", curses.color_pair(9))
         res = []
         brd = self.state['board'].root()
-        for x in self.state['board'].move_stack:
-            if not res or res[-1][0] != brd.fullmove_number:
-                res.append([brd.fullmove_number, '', ''])
+        for x, y in zip(self.state['board'].move_stack,
+                        self.state['move_info']):
+            if brd.turn == chess.WHITE:
+                hdr = '%3d.' % brd.fullmove_number
+            else:
+                hdr = '  ...'
             move = brd.san(x)
             brd.push(x)
-            res[-1][2 if brd.turn else 1] = move
+            res.append((hdr + move, y))
 
-        for (i, x) in enumerate(res[-29:]):
-            self.win.addstr(i + 1, 0, "%2d. %-5s %-5s" % tuple(x))
+        for i, (move, info) in enumerate(res[-self.NUM_PLY:]):
+            self.win.addstr(i + 1, 0, "%-12s" % move)
+            if isinstance(info, str):
+                self.win.addstr(info.ljust(52))
+            else:
+                progressbar.WdlBar(self.win, 52, info.wins, info.draws,
+                                   info.losses, 12, 13, 14, 15, 16, 17)
         self.win.clrtobot()
         super().Draw()
 
@@ -516,19 +530,21 @@ class Status(Widget):
 class MoveReady(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 10, 26, 10, 110)
+        super().__init__(parent, state, 30, 47, 18, 59)
 
     def Draw(self):
-        if True or self.state['moveready']:
-            for x in range(9):
-                self.win.addstr(x, 0, " MOVE READY!!!!!!!!!!!!! ",
-                                curses.color_pair(7))
-        else:
-            for x in range(14):
-                self.win.addstr(x, 0, "                             ")
+        if self.state['moveready']:
+            for x in range(23):
+                self.win.addstr(
+                    x, 0, " MOVE READY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ",
+                    curses.color_pair(7))
         super().Draw()
 
     def OnKey(self, key):
+        self.state['moveready'] = False
+        return False
+
+    def OnMouse(self, mouse):
         self.state['moveready'] = False
         return False
 
@@ -569,7 +585,7 @@ class Tui:
         self.scr.clear()
 
         self.widgets = [
-            Background(stdscr, state),
+            # Background(stdscr, state),
             Logo(stdscr, state),
             HelpPane(stdscr, state),
             Status(stdscr, state),
@@ -577,11 +593,10 @@ class Tui:
             StatusBar(stdscr, state),
             Engine(stdscr, state),
             Timer(stdscr, state),
-            # Info(stdscr, state),
             Thinking(stdscr, state),
             MoveList(stdscr, state),
             Promotions(stdscr, state),
-            MoveReady(stdscr, state),
+            # MoveReady(stdscr, state),
             MoveInput(stdscr, state),
         ]
 

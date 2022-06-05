@@ -8,7 +8,6 @@ import chess.polyglot
 import curses
 import datetime
 import pickle
-import copy
 import threading
 from wccc.tui import Tui
 
@@ -23,8 +22,8 @@ MULTIPV = 12
 
 COMMAND_LINE = [
     './lc0',
-    #'--backend=trivial',
-    '--backend=cuda',
+    '--backend=trivial',
+    # '--backend=cuda',
     '--show-wdl',
     '--show-movesleft',
     f'--logfile={os.path.abspath(".")}/data/lc0.log',
@@ -47,9 +46,9 @@ COMMAND_LINE = [
     # '--cpuct=3.8'
 ]
 
-START_TIME = 105 * 60 * 1000
-INCREMENT_MS = 30000
-OPENING_BOOK = None  # "WCCCbook.bin"
+START_TIME = 1 * 60
+INCREMENT = 1
+OPENING_BOOK = "WCCCbook.bin"
 
 ############################################################################
 
@@ -61,6 +60,7 @@ LOG_FORMAT = ('%(levelname).1s%(asctime)s.%(msecs)03d %(name)s '
 LOG_DATE_FORMAT = '%m%d %H:%M:%S'
 
 LOCK = threading.Lock()
+
 
 class Controller:
 
@@ -84,6 +84,7 @@ class Controller:
         except:
             self.state = {
                 'board': chess.Board(),
+                'move_info': [],
                 'flipped': False,
                 'statusbar': "",
                 'engine': False,
@@ -148,7 +149,8 @@ class Controller:
                     logging.info("Opening book hit: %s" % str(entry.move))
                     idx = 0 if self.state['board'].turn else 1
                     self.state['board'].push(entry.move)
-                    self.state['timer'][idx] += INCREMENT_MS
+                    self.state['move_info'].append('Still theory.')
+                    self.state['timer'][idx] += INCREMENT
                     self.state['movetimer'][1 - idx] = 0
                     self.state['nextmove'] = ''
                     curses.flash()
@@ -159,14 +161,13 @@ class Controller:
                 except IndexError:
                     pass
 
-            limit = chess.engine.Limit(
-                white_clock=self.state['timer'][0] / 1000.0,
-                black_clock=self.state['timer'][1] / 1000.0,
-                white_inc=INCREMENT_MS / 1000.0,
-                black_inc=INCREMENT_MS / 1000.0)
+            limit = chess.engine.Limit(white_clock=self.state['timer'][0],
+                                       black_clock=self.state['timer'][1],
+                                       white_inc=INCREMENT,
+                                       black_inc=INCREMENT)
             logging.info("Searching with time limit: %s" % str(limit))
             self.state['enginestatus'] = "go wtime %d btime %d" % tuple(
-                self.state['timer'])
+                [x * 1000 for x in self.state['timer']])
         else:
             self.state['enginestatus'] = "go infinite"
 
@@ -193,7 +194,7 @@ class Controller:
             logging.exception("Bad move: %s" % nextmove)
             return
 
-        self.state['timer'][idx] += INCREMENT_MS
+        self.state['timer'][idx] += INCREMENT
         self.state['movetimer'][1 - idx] = 0
         self.state['nextmove'] = ''
         self.StartSearch()
@@ -205,9 +206,10 @@ class Controller:
             self.SaveState()
             if self.state['board'].move_stack:
                 idx = 0 if self.state['board'].turn else 1
-                self.state['timer'][1 - idx] -= INCREMENT_MS
+                self.state['timer'][1 - idx] -= INCREMENT
                 self.state['movetimer'][1 - idx] = 0
                 self.state['board'].pop()
+                self.state['move_info'].pop()
                 self.state['nextmove'] = ''
 
                 self.StartSearch()
@@ -232,7 +234,7 @@ class Controller:
         if self.state['timerenabled']:
             idx = 0 if self.state['board'].turn else 1
             delta = (newtime - self.state['lasttimestamp']
-                     ) / datetime.timedelta(milliseconds=1)
+                     ) / datetime.timedelta(seconds=1)
             self.state['timer'][idx] -= delta
             self.state['movetimer'][idx] += delta
         self.state['lasttimestamp'] = newtime
@@ -261,23 +263,31 @@ class Controller:
                 'nodes': info.get('nodes', 0),
             }
 
+    def GetBestWdl(self):
+        if 'curr' not in self.state['thinking']: return "(unknown)"
+        if not self.state['thinking']['curr'].get('moves'):
+            return "(unknown)"
+        return max(self.state['thinking']['curr']['moves'].values(),
+                   key=lambda x: x['nodes']).get('wdl', '(unknown)')
+
     def UpdateOnSearchDone(self):
         if not self.search:
             return
 
-        return
-
-        if not self.search.done():
+        if not self.search.inner._finished.done():
             return
 
         curses.flash()
         curses.beep()
         self.state['moveready'] = True
         idx = 0 if self.state['board'].turn else 1
-        self.state['timer'][idx] += INCREMENT_MS
+        self.state['timer'][idx] += INCREMENT
         self.state['movetimer'][1 - idx] = 0
-        self.state['board'].push(self.search.result().bestmove)
+        best_move = self.search.wait()
+        self.state['board'].push(best_move.move)
+        self.state['move_info'].append(self.GetBestWdl())
         self.state['nextmove'] = ''
+        self.state['thinking'] = {}
         self.search = None
         self.StartSearch()
 
