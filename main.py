@@ -17,15 +17,19 @@ from wccc.tui import Tui
 ############################################################################
 
 #LC0_DIRECTORY = '/home/fhuizing/Workspace/chess/lc0/build/release'
-LC0_DIRECTORY = '/home/crem/dev/lc0/build/release'
+LC0_DIRECTORY = '/home/crem/dev/lc0.wt0/build/release'
 
-
-MULTIPV = 7
+MULTIPV = 12
 
 COMMAND_LINE = [
     './lc0',
-    '--backend=trivial',
+    #'--backend=trivial',
+    '--backend=cuda',
     '--show-wdl',
+    '--show-movesleft',
+    f'--logfile={os.path.abspath(".")}/data/lc0.log',
+    '--per-pv-counters',
+    '--preload',
     # '--multipv=7',
     # '--score-type=win_percentage',
     # '--weights=/home/fhuizing/Workspace/chess/wccc-tui/data/11248.pb.gz',
@@ -56,29 +60,10 @@ LOG_FORMAT = ('%(levelname).1s%(asctime)s.%(msecs)03d %(name)s '
               '%(filename)s:%(lineno)d] %(message)s')
 LOG_DATE_FORMAT = '%m%d %H:%M:%S'
 
-
 LOCK = threading.Lock()
 
-
-# class InfoAppender(chess.uci.InfoHandler):
-#     def __init__(self, dic):
-#         self.dic = dic
-#         super().__init__()
-
-#     def post_info(self):
-#         with LOCK:
-#             # if not self.dic['board'].turn:
-#             #    self.info['cp'] = -self.info['cp']
-
-#             if not self.info.get('string'):
-#                 if self.info['multipv'] == 1:
-#                     self.dic['info'].insert(0, None)
-#                 self.dic['info'] = [copy.deepcopy(
-#                     self.info)] + self.dic['info'][:27]
-#             super().post_info()
-
-
 class Controller:
+
     def __init__(self):
         os.chdir(LC0_DIRECTORY)
         logging.info("Starting engine %s" % repr(COMMAND_LINE))
@@ -115,6 +100,10 @@ class Controller:
                 'promotion': 'Q',
                 'commitmove': False,
                 'undo': False,
+                'nps': 0,
+                'depth': 0,
+                'seldepth': 0,
+                'thinking': {}
             }
         self.state['lasttimestamp'] = datetime.datetime.now()
         # self.engine.info_handlers.append(InfoAppender(self.state))
@@ -143,7 +132,9 @@ class Controller:
         logging.info("Starting search")
         self.SaveState()
 
-        self.state['info'] = [None] + self.state['info'][:27]
+        self.state['thinking'] = {}
+        for key in ['nps', 'depth', 'seldepth']:
+            self.state[key] = 0
 
         board = self.state['board']
         idx = 0 if board.turn else 1
@@ -169,10 +160,10 @@ class Controller:
                     pass
 
             limit = chess.engine.Limit(
-                white_clock=self.state['timer'][0]/1000.0,
-                black_clock=self.state['timer'][1]/1000.0,
-                white_inc=INCREMENT_MS/1000.0,
-                black_inc=INCREMENT_MS/1000.0)
+                white_clock=self.state['timer'][0] / 1000.0,
+                black_clock=self.state['timer'][1] / 1000.0,
+                white_inc=INCREMENT_MS / 1000.0,
+                black_inc=INCREMENT_MS / 1000.0)
             logging.info("Searching with time limit: %s" % str(limit))
             self.state['enginestatus'] = "go wtime %d btime %d" % tuple(
                 self.state['timer'])
@@ -180,8 +171,9 @@ class Controller:
             self.state['enginestatus'] = "go infinite"
 
         logging.info(f"Starting search, board=[{board.fen()}] limit={limit}")
-        self.search = self.engine.analysis(
-            board=board, limit=limit, multipv=MULTIPV)
+        self.search = self.engine.analysis(board=board,
+                                           limit=limit,
+                                           multipv=MULTIPV)
 
     def CommitMove(self):
         self.state['commitmove'] = False
@@ -249,14 +241,25 @@ class Controller:
         if not self.search:
             return
 
+        thinking = self.state['thinking']
+
         while not self.search.empty():
             info = self.search.get()
-
-            if not info.get('string'):
-                if info['multipv'] == 1:
-                    self.state['info'].insert(0, None)
-                self.state['info'] = [copy.deepcopy(
-                    info)] + self.state['info'][:27]
+            if 'curr' not in thinking or info['time'] > thinking['curr'][
+                    'time']:
+                thinking['prev'] = thinking.get('curr', {'time': 0})
+                thinking['curr'] = {"time": info['time'], "moves": {}}
+            for key in ['nps', 'depth', 'seldepth']:
+                if key in info:
+                    self.state[key] = info[key]
+            if not info.get('pv', None):
+                continue
+            move = info['pv'][0].uci()
+            thinking['curr']['moves'][move] = {
+                'score': info['score'].white() if 'score' in info else None,
+                'wdl': info['wdl'].white() if 'wdl' in info else None,
+                'nodes': info.get('nodes', 0),
+            }
 
     def UpdateOnSearchDone(self):
         if not self.search:
