@@ -4,8 +4,8 @@ LC0_DIRECTORY = '/home/crem/dev/lc0.wt0/build/release'
 
 COMMAND_LINE = [
     './lc0',
-    '--backend=trivial',
-    # '--backend=cuda',
+    #'--backend=trivial',
+    '--backend=cuda',
     '--show-wdl',
     '--show-movesleft',
     f'--logfile={os.path.abspath(".")}/data/lc0.log',
@@ -28,7 +28,7 @@ COMMAND_LINE = [
     # '--cpuct=3.8'
 ]
 
-START_TIME = 5 * 60
-INCREMENT = 5
+START_TIME = 20
+INCREMENT = 0.25
 OPENING_BOOK = "WCCCbook.bin"
         

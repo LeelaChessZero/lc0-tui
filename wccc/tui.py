@@ -240,22 +240,30 @@ class ChessBoard(Widget):
 
             if cell in lastmove:
                 hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
-                self.win.addstr(row + 0, col, hor, curses.color_pair(10))
-                self.win.addstr(row + 1, col, '|', curses.color_pair(10))
-                self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '|',
-                                curses.color_pair(10))
-                self.win.addstr(row + 2, col, hor, curses.color_pair(10))
+                self.win.addstr(row + 0, col, '┌─', curses.color_pair(11))
+                self.win.addstr(row + 0, col + self.CELL_WIDTH - 2, '─┐',
+                                curses.color_pair(11))
+                self.win.addstr(row + 1, col, '│', curses.color_pair(11))
+                self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '│',
+                                curses.color_pair(11))
+                self.win.addstr(row + 2, col, '└─', curses.color_pair(11))
+                self.win.addstr(row + 2, col + self.CELL_WIDTH - 2, '─┘',
+                                curses.color_pair(11))
 
             if cell in [
                     self.state['nextmove'][0:2],
                     self.state['nextmove'][2:4],
             ]:
                 hor = '-' * (self.CELL_WIDTH - 2)
-                self.win.addstr(row + 0, col + 1, hor, curses.color_pair(11))
-                self.win.addstr(row + 1, col, '|', curses.color_pair(11))
-                self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '|',
-                                curses.color_pair(11))
-                self.win.addstr(row + 2, col + 1, hor, curses.color_pair(11))
+                self.win.addstr(row + 0, col + 1, '╱', curses.color_pair(10))
+                self.win.addstr(row + 0, col + self.CELL_WIDTH - 2, '╲',
+                                curses.color_pair(10))
+                self.win.addstr(row + 1, col, '<', curses.color_pair(10))
+                self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '>',
+                                curses.color_pair(10))
+                self.win.addstr(row + 2, col + 1, '╲', curses.color_pair(10))
+                self.win.addstr(row + 2, col + self.CELL_WIDTH - 2, '╱',
+                                curses.color_pair(10))
 
         self.win.erase()
         files = '12345678'
