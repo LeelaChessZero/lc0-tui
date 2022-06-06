@@ -28,6 +28,7 @@ COMMAND_LINE = [
     # '--cpuct=3.8'
 ]
 
-START_TIME = 1 * 60
-INCREMENT = 1
+START_TIME = 5 * 60
+INCREMENT = 5
 OPENING_BOOK = "WCCCbook.bin"
+        
