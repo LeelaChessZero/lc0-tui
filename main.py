@@ -65,11 +65,12 @@ class Controller:
                 'nps': 0,
                 'depth': 0,
                 'seldepth': 0,
-                'thinking': {},
                 'autocommitenabled': False,
                 'movenotify': False,
+                'piecedisplay': 0,
             }
         self.state['lasttimestamp'] = datetime.datetime.now()
+        self.state['thinking'] = {}
         # self.engine.info_handlers.append(InfoAppender(self.state))
 
     def SaveState(self):
@@ -154,6 +155,7 @@ class Controller:
         try:
             self.state['board'].push_uci(nextmove)
             self.state['move_info'].append(self.GetBestWdl())
+            self.state['thinking'] = {}
         except:
             logging.exception("Bad move: %s" % nextmove)
             return
@@ -175,6 +177,7 @@ class Controller:
                 self.state['board'].pop()
                 self.state['move_info'].pop()
                 self.state['nextmove'] = ''
+                self.state['thinking'] = {}
 
                 self.StartSearch()
         if self.state['commitmove']:
@@ -241,6 +244,7 @@ class Controller:
         if not self.search.inner._finished.done():
             return
 
+        self.UpdateSearchInfo()
         curses.flash()
         curses.beep()
         self.state['moveready'] = True
@@ -252,6 +256,7 @@ class Controller:
         self.state['move_info'].append(self.GetBestWdl())
         self.state['nextmove'] = ''
         self.state['thinking'] = {}
+        self.state['enginestatus'] = "Stopped."
         self.search = None
         self.StartSearch()
 

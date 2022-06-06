@@ -5,8 +5,77 @@ import datetime
 from . import progressbar
 
 #PIECES_UNICODE = '♙♘♗♖♕♔'
-PIECES_UNICODE = '♟♞♝♜♛♚'
-PIECES_STR = 'PNBRQK'
+#PIECES_UNICODE = '♟♞♝♜♛♚'
+#PIECES_STR = 'PNBRQK'
+
+PIECES = [
+    [
+        (
+            '   🭯   ',
+            '  🭢█🭗  ',
+            '  🬂🬂🬂  ',
+        ),
+        (
+            ' 🬷🬱🬺🬽  ',
+            '🬁🬎🬍██🭀 ',
+            '  🬋🬎🬎🬌🬃',
+        ),
+        (
+            '  🭮█🭬  ',
+            '  🭋█🭀  ',
+            ' 🬇🬍🬎🬌🬃 ',
+        ),
+        (
+            ' 🬹🬭🬹🬭🬹 ',
+            ' 🭣███🭘 ',
+            ' 🬍🬌🬎🬍🬌 ',
+        ),
+        (
+            ' 🭀🭀🭋🭀🭋🭋',
+            ' 🭐🭐🭅🭐🭅🭅',
+            ' 🬍🬎🬎🬎🬎🬌',
+        ),
+        (
+            '🬞🬹🬹🬘🬵🬹🬱',
+            '🬁🬬█🬣🬬█🬆',
+            ' 🬋🬌🬎🬌🬌🬋',
+        ),
+    ],
+    [
+        (
+            '   ▄   ',
+            '  ▝█▘  ',
+            '  ▀▀▀  ',
+        ),
+        (
+            ' ▟▚█▄  ',
+            '▝▟▀██▙ ',
+            '  ▄██▙▖',
+        ),
+        (
+            '  ▗▙   ',
+            '  ▗▙   ',
+            ' ▗██▙  ',
+        ),
+        (
+            ' █▙█▙█▌',
+            ' ▐████ ',
+            ' ▟████▖',
+        ),
+        (
+            '▝▖▚▐▗▘▞',
+            ' ▝███▛ ',
+            ' ▗▟██▄ ',
+        ),
+        (
+            ' ▄▄▐▗▄▖',
+            '▝█████▛',
+            ' ▝███▛ ',
+        ),
+    ],
+    ['♙ P', '♘ N', '♗ B', '♖ R', '♕ Q', '♔ K'],
+    ['pawn', 'kNight', 'Bishop', 'ROOK', 'QUEEN', 'KING'],
+]
 
 # Change thouse to 0..15 if youo have 16-color palette
 BLACK_PIECES = 232  # 0
@@ -83,17 +152,18 @@ class Background(Widget):
 class HelpPane(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 3, 60, 40, 2)
+        super().__init__(parent, state, 10, 30, 34, 1)
 
     def Draw(self):
         self.win.addstr(
-            0, 0, "(Shift+1) force    (Shift+U) undo    (Tab) flip")
-        self.win.addstr(1, 0, "Autocommit (Shift+A): ")
+            0, 0, "(Shift+1) force\n(Shift+U) undo\n"
+            "    (Tab) flip\n(Shift+D) display\n\n\n")
+        self.win.addstr("Autocommit (Shift+A): ")
         if self.state['autocommitenabled']:
             self.win.addstr("[ ON  ]", curses.color_pair(6))
         else:
             self.win.addstr("[ OFF ]", curses.color_pair(7))
-        self.win.addstr("  Notify (Shift+M): ")
+        self.win.addstr("\n    Notify (Shift+M): ")
         if self.state['movenotify']:
             self.win.addstr("[ ON  ]", curses.color_pair(7))
         else:
@@ -103,10 +173,16 @@ class HelpPane(Widget):
 
     def OnKey(self, key):
         if key == ord('A'):  # Shift+A
-            self.state['autocommitenabled'] = not self.state['autocommitenabled']
+            self.state[
+                'autocommitenabled'] = not self.state['autocommitenabled']
             return True
         if key == ord('M'):  # Shift+M
             self.state['movenotify'] = not self.state['movenotify']
+            return True
+        if key == ord('D'):  # Shift+D
+            self.state['piecedisplay'] += 1
+            if self.state['piecedisplay'] >= len(PIECES):
+                self.state['piecedisplay'] = 0
             return True
         return False
 
@@ -141,10 +217,14 @@ class ChessBoard(Widget):
             color = piece is not None and piece.color
 
             if piece:
-                val = (f' {PIECES_UNICODE[piece.piece_type - 1]}'
-                       f' {PIECES_STR[piece.piece_type - 1]} ')
+                disp = PIECES[self.state['piecedisplay']][piece.piece_type - 1]
+                if isinstance(disp, tuple):
+                    (top, mid, bot) = disp
+                else:
+                    top = bot = ' ' * self.CELL_WIDTH
+                    mid = disp.center(7)
             else:
-                val = ' ' * (self.CELL_WIDTH - 2)
+                top = mid = bot = ' ' * self.CELL_WIDTH
 
             if color:
                 attr = curses.color_pair(1 if is_dark else 2)
@@ -154,10 +234,9 @@ class ChessBoard(Widget):
             row = (file_idx if flipped else 7 - file_idx) * self.CELL_HEIGHT
             col = (7 - rank_idx if flipped else rank_idx) * self.CELL_WIDTH + 1
 
-            self.win.addstr(row + 0, col, ' ' * self.CELL_WIDTH, attr)
-            self.win.addstr(row + 1, col, ' ' + val + ' ',
-                            attr + curses.A_BOLD)
-            self.win.addstr(row + 2, col, ' ' * self.CELL_WIDTH, attr)
+            self.win.addstr(row + 0, col, top, attr)
+            self.win.addstr(row + 1, col, mid, attr + curses.A_BOLD)
+            self.win.addstr(row + 2, col, bot, attr)
 
             if cell in lastmove:
                 hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
@@ -298,7 +377,7 @@ class Engine(Widget):
 class Promotions(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 39, 36, 2)
+        super().__init__(parent, state, 4, 39, 36, 20)
 
     def Draw(self):
         prom = self.state['promotion']
@@ -379,7 +458,7 @@ class Thinking(Widget):
 class MoveInput(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 2, 39, 34, 2)
+        super().__init__(parent, state, 2, 39, 34, 18)
 
     def Draw(self):
         self.win.addstr(1, 15, "(Enter) to commit move.")
@@ -492,7 +571,6 @@ class MoveList(Widget):
         brd = self.state['board'].root()
         for x, y in zip(self.state['board'].move_stack,
                         self.state['move_info']):
-            logging.info((x,y))
             if brd.turn == chess.WHITE:
                 hdr = '%3d.' % brd.fullmove_number
             else:
