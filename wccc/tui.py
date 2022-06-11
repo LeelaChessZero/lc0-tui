@@ -160,22 +160,22 @@ class Background(Widget):
 class HelpPane(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 10, 30, 34, 1)
+        super().__init__(parent, state, 10, 31, 34, 1)
 
     def Draw(self):
         self.win.addstr(
             0, 0, "(Shift+1) force\n(Shift+U) undo\n"
-            "    (Tab) flip\n(Shift+D) display\n\n\n")
-        self.win.addstr("Autocommit (Shift+A): ")
+            "    (Tab) flip\n(Shift+V) view\n\n")
+        self.win.addstr("\n Autocommit (Shift+A): ")
         if self.state['autocommitenabled']:
-            self.win.addstr("[ ON  ]", curses.color_pair(6))
-        else:
-            self.win.addstr("[ OFF ]", curses.color_pair(7))
-        self.win.addstr("\n    Notify (Shift+M): ")
-        if self.state['movenotify']:
             self.win.addstr("[ ON  ]", curses.color_pair(7))
         else:
             self.win.addstr("[ OFF ]", curses.color_pair(6))
+        self.win.addstr("\n     Notify (Shift+M): ")
+        if self.state['movenotify']:
+            self.win.addstr("[ ON  ]", curses.color_pair(6))
+        else:
+            self.win.addstr("[ OFF ]", curses.color_pair(7))
 
         super().Draw()
 
@@ -183,16 +183,15 @@ class HelpPane(Widget):
         if key == ord('A'):  # Shift+A
             self.state[
                 'autocommitenabled'] = not self.state['autocommitenabled']
-            return True
-        if key == ord('M'):  # Shift+M
+        elif key == ord('M'):  # Shift+M
             self.state['movenotify'] = not self.state['movenotify']
-            return True
-        if key == ord('D'):  # Shift+D
+        elif key == ord('V'):  # Shift+V
             self.state['piecedisplay'] += 1
             if self.state['piecedisplay'] >= len(PIECES):
                 self.state['piecedisplay'] = 0
-            return True
-        return False
+        else:
+            return False
+        return True
 
 
 class ChessBoard(Widget):
@@ -331,11 +330,22 @@ class ChessBoard(Widget):
 class StatusBar(Widget):
 
     def __init__(self, parent, state):
+        self.lasttime = datetime.datetime(year=2000, month=1, day=1)
+        self.count = 0
+        self.fps = 0
         super().__init__(parent, state, 1, SCREEN_WIDTH + 2, SCREEN_HEIGHT, 0)
 
     def Draw(self):
+        new_time = datetime.datetime.now()
+        if new_time - self.lasttime > datetime.timedelta(seconds=1):
+            self.fps = self.count
+            self.count = 0
+            self.lasttime = new_time
+        self.count += 1
         self.win.bkgdset(' ', curses.color_pair(5))
-        self.win.addstr(0, 0, f" %-{SCREEN_WIDTH}s" % self.state['statusbar'])
+        self.win.addstr(
+            0, 0, f" %-{SCREEN_WIDTH-8}sFPS: %-3d" %
+            (self.state['statusbar'], self.fps))
         self.win.noutrefresh()
         super().Draw()
 
@@ -393,7 +403,7 @@ class Engine(Widget):
 class Promotions(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 39, 36, 20)
+        super().__init__(parent, state, 4, 39, 35, 18)
 
     def Draw(self):
         prom = self.state['promotion']
@@ -477,7 +487,6 @@ class MoveInput(Widget):
         super().__init__(parent, state, 2, 39, 34, 18)
 
     def Draw(self):
-        self.win.addstr(1, 15, "(Enter) to commit move.")
         self.win.addstr(0, 0, "Enter move (e.g. e2e4 or h2h1n): ",
                         curses.color_pair(9))
         self.win.addstr(self.state['nextmove'], curses.color_pair(10))
