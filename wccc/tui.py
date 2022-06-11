@@ -73,6 +73,14 @@ PIECES = [
             ' ▗███▙ ',
         ),
     ],
+    [
+        ('o', 'T', '<_>'),
+        (r'<`^\ ', ' /  )', '<_N_>'),
+        (r'o', '(+)', '<_B_>'),
+        (r'|UUU|', '| |', '<_R_>'),
+        (r'.oOo.', r'\\\\|//', '<_Q_>'),
+        (r'_+_', r'(_|_)', '<_K_>'),
+    ],
     ['♙ P', '♘ N', '♗ B', '♖ R', '♕ Q', '♔ K'],
     ['pawn', 'kNight', 'Bishop', 'ROOK', 'QUEEN', 'KING'],
 ]
@@ -219,7 +227,7 @@ class ChessBoard(Widget):
             if piece:
                 disp = PIECES[self.state['piecedisplay']][piece.piece_type - 1]
                 if isinstance(disp, tuple):
-                    (top, mid, bot) = disp
+                    (top, mid, bot) = (x.center(self.CELL_WIDTH) for x in disp)
                 else:
                     top = bot = ' ' * self.CELL_WIDTH
                     mid = disp.center(7)
