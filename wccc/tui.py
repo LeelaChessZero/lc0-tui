@@ -771,7 +771,8 @@ class Tui:
         curses.init_pair(20, 56, 0)  # Progress bar remoinder
         curses.init_pair(21, 231, 0)  # Progress bar text
 
-        curses.halfdelay(1)
+        stdscr.nodelay(1)
+        #curses.halfdelay(1)
         self.scr.clear()
 
         self.widgets = [
