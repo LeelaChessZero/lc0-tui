@@ -700,8 +700,8 @@ class MoveReady(Widget):
 
 DUCK_SPRITES = [
     ('<`)', ' /\\__', '(_3_/ & & &'),
-    (' <\')', ' /|__', '(_3_/ & & &'),
     ('<`)', ' /\\__', '(_}_/ & & &'),
+    (' <\')', ' /|__', '(_3_/ & & &'),
     (' <\')', ' /|__', '(_}_/ & & &'),
 ]
 
@@ -709,7 +709,7 @@ DUCK_SPRITES = [
 class Duck(Widget):
     WIDTH = 25
     SPRITE_WIDTH = len(DUCK_SPRITES[0][2])
-    NUM_FRAMES = 4 * (WIDTH + SPRITE_WIDTH + 2)
+    NUM_FRAMES = WIDTH + SPRITE_WIDTH + 2
 
     def __init__(self, parent, state):
         self.frame = 0
@@ -718,10 +718,10 @@ class Duck(Widget):
 
     def Draw(self):
         new_time = datetime.datetime.now()
-        if new_time - self.lasttime <= datetime.timedelta(seconds=0.2):
+        if new_time - self.lasttime <= datetime.timedelta(seconds=0.3):
             return
         self.lasttime = new_time
-        offset = self.frame // len(DUCK_SPRITES)
+        offset = self.frame
         sprite = self.frame % len(DUCK_SPRITES)
         prefix = ' ' * (self.WIDTH + self.SPRITE_WIDTH - offset)
         logging.info(offset)
