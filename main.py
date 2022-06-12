@@ -65,9 +65,10 @@ class Controller:
                 'nps': 0,
                 'depth': 0,
                 'seldepth': 0,
-                'autocommitenabled': False,
+                'autocommitenabled': True,
                 'movenotify': False,
                 'piecedisplay': 0,
+                'drift_compensation': round(INCREMENT) / 2,
             }
         self.state['lasttimestamp'] = datetime.datetime.now()
         self.state['thinking'] = {}
@@ -92,6 +93,8 @@ class Controller:
         if (self.state['board'].is_checkmate()
                 or self.state['board'].is_stalemate()):
             logging.info("Terminal position, not searching")
+            self.state['timerenabled'] = False
+            self.state['engine'] = False
             return
 
         logging.info("Starting search")
@@ -112,9 +115,10 @@ class Controller:
                         self.state['board'])
                     logging.info("Opening book hit: %s" % str(entry.move))
                     idx = 0 if self.state['board'].turn else 1
+                    self.state['timer'][idx] += self.GetIncrement(
+                        self.state['board'].turn)
                     self.state['board'].push(entry.move)
                     self.state['move_info'].append('Still theory.')
-                    self.state['timer'][idx] += INCREMENT
                     self.state['movetimer'][1 - idx] = 0
                     self.state['nextmove'] = ''
                     curses.flash()
@@ -125,13 +129,18 @@ class Controller:
                 except IndexError:
                     pass
 
-            limit = chess.engine.Limit(white_clock=self.state['timer'][0],
-                                       black_clock=self.state['timer'][1],
-                                       white_inc=INCREMENT,
-                                       black_inc=INCREMENT)
+            limit = chess.engine.Limit(
+                white_clock=self.state['timer'][0],
+                black_clock=self.state['timer'][1],
+                white_inc=self.GetIncrement(chess.WHITE),
+                black_inc=self.GetIncrement(chess.BLACK))
             logging.info("Searching with time limit: %s" % str(limit))
-            self.state['enginestatus'] = "go wtime %d btime %d" % tuple(
-                [x * 1000 for x in self.state['timer']])
+            self.state[
+                'enginestatus'] = "go wtime %d btime %d winc %d binc %d" % tuple(
+                    [x * 1000 for x in self.state['timer']] + [
+                        self.GetIncrement(x) * 1000
+                        for x in (chess.WHITE, chess.BLACK)
+                    ])
         else:
             self.state['enginestatus'] = "go infinite"
 
@@ -139,6 +148,15 @@ class Controller:
         self.search = self.engine.analysis(board=board,
                                            limit=limit,
                                            multipv=MULTIPV)
+
+    def GetIncrement(self, white_color):
+        if self.state['timedsearch'][0] == self.state['timedsearch'][1]:
+            return INCREMENT
+        if (white_color == chess.WHITE) == self.state['timedsearch'][0]:
+            return max(0, INCREMENT - self.state['drift_compensation'])
+        else:
+            return min(2 * INCREMENT,
+                       INCREMENT + self.state['drift_compensation'])
 
     def CommitMove(self):
         self.state['commitmove'] = False
@@ -160,7 +178,8 @@ class Controller:
             logging.exception("Bad move: %s" % nextmove)
             return
 
-        self.state['timer'][idx] += INCREMENT
+        self.state['timer'][idx] += self.GetIncrement(
+            not self.state['board'].turn)
         self.state['movetimer'][1 - idx] = 0
         self.state['nextmove'] = ''
         self.StartSearch()
@@ -172,7 +191,6 @@ class Controller:
             self.SaveState()
             if self.state['board'].move_stack:
                 idx = 0 if self.state['board'].turn else 1
-                self.state['timer'][1 - idx] -= INCREMENT
                 self.state['movetimer'][1 - idx] = 0
                 self.state['board'].pop()
                 self.state['move_info'].pop()
@@ -249,7 +267,7 @@ class Controller:
         curses.beep()
         self.state['moveready'] = True
         idx = 0 if self.state['board'].turn else 1
-        self.state['timer'][idx] += INCREMENT
+        self.state['timer'][idx] += self.GetIncrement(self.state['board'].turn)
         self.state['movetimer'][1 - idx] = 0
         best_move = self.search.wait()
         self.state['board'].push(best_move.move)

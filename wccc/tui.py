@@ -3,6 +3,7 @@ import logging
 import chess
 import datetime
 from . import progressbar
+from . import config
 
 #PIECES_UNICODE = '♙♘♗♖♕♔'
 #PIECES_UNICODE = '♟♞♝♜♛♚'
@@ -391,13 +392,15 @@ class Engine(Widget):
     def OnKey(self, key):
         if key == ord('E'):
             self.state['engine'] = not self.state['engine']
-            return True
-        if key == ord('z'):
+            if not self.state['engine']:
+                self.state['timerenabled'] = False
+        elif key == ord('z'):
             self.state['timedsearch'][0] = not self.state['timedsearch'][0]
-            return True
-        if key == ord('x'):
+        elif key == ord('x'):
             self.state['timedsearch'][1] = not self.state['timedsearch'][1]
-            return True
+        else:
+            return False
+        return True
 
 
 class Promotions(Widget):
@@ -549,12 +552,26 @@ class Timer(Widget):
                 mt // 60,
                 mt % 60,
             )
-            self.win.addstr(
-                1 + i, 0, s,
-                curses.color_pair(10 if ((
-                    idx == 0) == self.state['board'].turn) else 0))
+            if (idx == 0) != self.state['board'].turn:
+                color = 0
+            elif not self.state['timerenabled']:
+                color = 10
+            elif tim < 120:
+                color = 6
+            else:
+                color = 7
+
+            self.win.addstr(1 + i, 0, s, curses.color_pair(color))
         self.win.addstr(1, 23, "(9/0)±1s (Shift+9/0)±20s (o/p)±5m")
         self.win.addstr(2, 23, "(-/=)±1s (Shift+-/=)±20s ([/])±5m")
+        self.win.addstr(3, 23, "Increment=")
+        self.win.addstr("%3ss" % (ShortenNum(config.INCREMENT, 3)),
+                        curses.color_pair(10))
+        self.win.addstr("   Drift=")
+        self.win.addstr(
+            "%3ss" % (ShortenNum(self.state['drift_compensation'], 3)),
+            curses.color_pair(10))
+        self.win.addstr(" (,/.)")
 
         super().Draw()
 
@@ -562,6 +579,18 @@ class Timer(Widget):
         if key == ord('T'):
             self.state['timerenabled'] = not self.state['timerenabled']
             self.state['lasttimestamp'] = datetime.datetime.now()
+            return True
+        if key == ord(','):
+            self.state['drift_compensation'] -= 0.5
+            if self.state['drift_compensation'] < 0:
+                self.state['drift_compensation'] = 0
+            self.state['drift_compensation'] = round(
+                self.state['drift_compensation'] * 2) / 2
+            return True
+        if key == ord('.'):
+            self.state['drift_compensation'] += 0.5
+            if self.state['drift_compensation'] > config.INCREMENT:
+                self.state['drift_compensation'] = config.INCREMENT
             return True
         keys = [
             ('-', False, -1),
