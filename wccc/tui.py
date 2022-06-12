@@ -144,6 +144,9 @@ class Widget:
     def OnMouse(self, mouse):
         return False
 
+    def OnAny(self):
+        pass
+
 
 class Background(Widget):
 
@@ -692,14 +695,8 @@ class MoveReady(Widget):
                     curses.color_pair(7))
         super().Draw()
 
-    def OnKey(self, key):
+    def OnAny(self):
         self.state['moveready'] = False
-        return False
-
-    def OnMouse(self, mouse):
-        self.state['moveready'] = False
-        return False
-
 
 DUCK_SPRITES = [
     ('<`)', ' /\\__', '(_3_/ & & &'),
@@ -806,6 +803,8 @@ class Tui:
         x = self.scr.getch()
         if x == -1:
             return
+        for y in self.widgets:
+            y.OnAny()
         if x == curses.KEY_MOUSE:
             try:
                 mouse = curses.getmouse()

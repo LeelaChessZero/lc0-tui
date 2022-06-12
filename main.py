@@ -135,12 +135,12 @@ class Controller:
                 white_inc=self.GetIncrement(chess.WHITE),
                 black_inc=self.GetIncrement(chess.BLACK))
             logging.info("Searching with time limit: %s" % str(limit))
-            self.state[
-                'enginestatus'] = "go wtime %d btime %d winc %d binc %d" % tuple(
-                    [x * 1000 for x in self.state['timer']] + [
-                        self.GetIncrement(x) * 1000
-                        for x in (chess.WHITE, chess.BLACK)
-                    ])
+            self.state['enginestatus'] = "go w %d+%d b %d+%d" % tuple(
+                int(x * 1000) for x in [
+                    self.state['timer'][0],
+                    self.GetIncrement(chess.WHITE), self.state['timer'][1],
+                    self.GetIncrement(chess.BLACK)
+                ])
         else:
             self.state['enginestatus'] = "go infinite"
 
