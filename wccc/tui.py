@@ -701,6 +701,47 @@ class MoveReady(Widget):
         return False
 
 
+DUCK_SPRITES = [
+    ('<`)', ' /\\__', '(_3_/ & & &'),
+    (' <\')', ' /|__', '(_3_/ & & &'),
+    ('<`)', ' /\\__', '(_}_/ & & &'),
+    (' <\')', ' /|__', '(_}_/ & & &'),
+]
+
+
+class Duck(Widget):
+    WIDTH = 25
+    SPRITE_WIDTH = len(DUCK_SPRITES[0][2])
+    NUM_FRAMES = 4 * (WIDTH + SPRITE_WIDTH + 2)
+
+    def __init__(self, parent, state):
+        self.frame = 0
+        self.lasttime = datetime.datetime(year=2000, month=1, day=1)
+        super().__init__(parent, state, 3, self.WIDTH + 1, 39, 32)
+
+    def Draw(self):
+        new_time = datetime.datetime.now()
+        if new_time - self.lasttime <= datetime.timedelta(seconds=0.2):
+            return
+        self.lasttime = new_time
+        offset = self.frame // len(DUCK_SPRITES)
+        sprite = self.frame % len(DUCK_SPRITES)
+        prefix = ' ' * (self.WIDTH + self.SPRITE_WIDTH - offset)
+        logging.info(offset)
+        logging.info(sprite)
+        logging.info(repr(prefix))
+        for i, line in enumerate(DUCK_SPRITES[sprite]):
+            logging.info(
+                repr((prefix + line)[self.SPRITE_WIDTH:].ljust(
+                    self.WIDTH)[:self.WIDTH]))
+            self.win.addstr(i, 0, (prefix + line)[self.SPRITE_WIDTH:].ljust(
+                self.WIDTH)[:self.WIDTH])
+        self.frame += 1
+        if self.frame >= self.NUM_FRAMES:
+            self.frame = 0
+        super().Draw()
+
+
 class Tui:
 
     def __init__(self, stdscr, state):
@@ -739,6 +780,7 @@ class Tui:
         self.widgets = [
             # Background(stdscr, state),
             Logo(stdscr, state),
+            Duck(stdscr, state),
             HelpPane(stdscr, state),
             Status(stdscr, state),
             ChessBoard(stdscr, state),

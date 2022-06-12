@@ -4,8 +4,8 @@ LC0_DIRECTORY = '/home/crem/dev/lc0.wt0/build/release'
 
 COMMAND_LINE = [
     './lc0',
-    #'--backend=trivial',
-    '--backend=cuda',
+    '--backend=trivial',
+    #'--backend=cuda',
     '--show-wdl',
     '--show-movesleft',
     f'--logfile={os.path.abspath(".")}/data/lc0.log',
