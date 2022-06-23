@@ -129,11 +129,18 @@ def ShortenNum(num, max_len):
     return 'inf'
 
 
+class TooSmall(Exception):
+    pass
+
+
 class Widget:
 
     def __init__(self, parent, state, rows, cols, row, col):
         self.state = state
-        self.win = parent.subwin(rows, cols, row, col)
+        (max_y, max_x) = parent.getmaxyx()
+        if (rows + row > max_y) or (cols + col > max_x):
+            raise TooSmall()
+        self.win = parent.derwin(rows, cols, row, col)
 
     def Draw(self):
         self.win.noutrefresh()
@@ -698,6 +705,7 @@ class MoveReady(Widget):
     def OnAny(self):
         self.state['moveready'] = False
 
+
 DUCK_SPRITES = [
     ('<`)', ' /\\__', '( 3 / & & &'),
     ('<`)', ' /\\__', '( } / & & &'),
@@ -739,6 +747,32 @@ class Duck(Widget):
         super().Draw()
 
 
+def CreateWidgets(stdscr, state):
+    # Create all widgets that are not too small for the parent window.
+    widgets = []
+    for w in [
+            # Background,
+            Logo,
+            Duck,
+            HelpPane,
+            Status,
+            ChessBoard,
+            StatusBar,
+            Engine,
+            Timer,
+            Thinking,
+            MoveList,
+            Promotions,
+            MoveReady,
+            MoveInput,
+    ]:
+        try:
+            widgets.append(w(stdscr, state))
+        except TooSmall:
+            pass
+    return widgets
+
+
 class Tui:
 
     def __init__(self, stdscr, state):
@@ -775,22 +809,7 @@ class Tui:
         #curses.halfdelay(1)
         self.scr.clear()
 
-        self.widgets = [
-            # Background(stdscr, state),
-            Logo(stdscr, state),
-            Duck(stdscr, state),
-            HelpPane(stdscr, state),
-            Status(stdscr, state),
-            ChessBoard(stdscr, state),
-            StatusBar(stdscr, state),
-            Engine(stdscr, state),
-            Timer(stdscr, state),
-            Thinking(stdscr, state),
-            MoveList(stdscr, state),
-            Promotions(stdscr, state),
-            MoveReady(stdscr, state),
-            MoveInput(stdscr, state),
-        ]
+        self.widgets = CreateWidgets(self.scr, state)
 
     def Draw(self):
         for x in self.widgets:
@@ -804,6 +823,13 @@ class Tui:
         x = self.scr.getch()
         if x == -1:
             return
+        if x == curses.KEY_RESIZE:
+            self.widgets = CreateWidgets(self.scr, self.state)
+            #curses.resizeterm(*self.scr.getmaxyx())
+            #self.scr.clear()
+            #self.scr.refresh()
+            return
+
         for y in self.widgets:
             y.OnAny()
         if x == curses.KEY_MOUSE:
