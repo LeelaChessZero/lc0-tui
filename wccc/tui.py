@@ -355,7 +355,7 @@ class StatusBar(Widget):
         self.count += 1
         self.win.bkgdset(' ', curses.color_pair(5))
         self.win.addstr(
-            0, 0, f" %-{SCREEN_WIDTH-8}sFPS: %-3d" %
+            0, 0, f" %-{SCREEN_WIDTH-10}sFPS: %-5d" %
             (self.state['statusbar'], self.fps))
         self.win.noutrefresh()
         super().Draw()
@@ -732,13 +732,7 @@ class Duck(Widget):
         offset = self.frame
         sprite = self.frame % len(DUCK_SPRITES)
         prefix = ' ' * (self.WIDTH + self.SPRITE_WIDTH - offset)
-        logging.info(offset)
-        logging.info(sprite)
-        logging.info(repr(prefix))
         for i, line in enumerate(DUCK_SPRITES[sprite]):
-            logging.info(
-                repr((prefix + line)[self.SPRITE_WIDTH:].ljust(
-                    self.WIDTH)[:self.WIDTH]))
             self.win.addstr(i, 0, (prefix + line)[self.SPRITE_WIDTH:].ljust(
                 self.WIDTH)[:self.WIDTH])
         self.frame += 1
@@ -823,6 +817,9 @@ class Tui:
         x = self.scr.getch()
         if x == -1:
             return
+        logging.info("Got key: %d" % x)
+        if x == 3:  # Ctrl-C
+            raise KeyboardInterrupt
         if x == curses.KEY_RESIZE:
             self.widgets = CreateWidgets(self.scr, self.state)
             #curses.resizeterm(*self.scr.getmaxyx())

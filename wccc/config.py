@@ -30,5 +30,6 @@ COMMAND_LINE = [
 
 START_TIME = 45 * 60.0
 INCREMENT = 15.0
-OPENING_BOOK = "WCCCbook.bin"
+#OPENING_BOOK = "WCCCbook.bin"
+OPENING_BOOK = "book_791557.bin"
         
