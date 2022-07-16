@@ -508,7 +508,7 @@ class MoveInput(Widget):
 
     def OnKey(self, key):
         st = self.state['nextmove']
-        if key in [127, 263]:  # Backspace
+        if key in [8, 127, 263]:  # Backspace
             self.state['nextmove'] = self.state['nextmove'][:-1]
             return True
         if key == 10 and len(st) >= 4:
@@ -778,13 +778,13 @@ class Tui:
         curses.init_pair(2, WHITE_PIECES, LIGHT_SQUARES)  # White on bright
         curses.init_pair(3, BLACK_PIECES, DARK_SQUARES)  # Black on dark
         curses.init_pair(4, BLACK_PIECES, LIGHT_SQUARES)  # Black on bright
-        curses.init_pair(5, 0, 12)  # Status bar
-        curses.init_pair(6, 15, 9)  # [FAIL]
-        curses.init_pair(7, 15, 2)  # [OK]
-        curses.init_pair(8, 9, 0)  # Logo
-        curses.init_pair(9, 14, 0)  # Bright white on black
-        curses.init_pair(10, 10, 0)  # Past move from/to marker, move text
-        curses.init_pair(11, 9, 4)  # Move selector from/to marker
+        curses.init_pair(5, 0, 33)  # Status bar
+        curses.init_pair(6, 15, 160)  # [FAIL]
+        curses.init_pair(7, 15, 70)  # [OK]
+        curses.init_pair(8, 196, 0)  # Logo
+        curses.init_pair(9, 80, 0)  # Bright white on black
+        curses.init_pair(10, 82, 0)  # Past move from/to marker, move text
+        curses.init_pair(11, 196, 18)  # Move selector from/to marker
 
         curses.init_pair(12, BLACK_TEXT, WHITE_BG)  # White block
         curses.init_pair(13, WHITE_TEXT, DRAW_BG)  # Draw block
