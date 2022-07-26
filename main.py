@@ -15,6 +15,7 @@ from wccc.config import *
 MULTIPV = 12
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 
 LOG_FORMAT = ('%(levelname).1s%(asctime)s.%(msecs)03d %(name)s '
               '%(filename)s:%(lineno)d] %(message)s')
@@ -29,7 +30,7 @@ class Controller:
         os.chdir(LC0_DIRECTORY)
         logging.info("Starting engine %s" % repr(COMMAND_LINE))
         self.engine = chess.engine.SimpleEngine.popen_uci(
-            COMMAND_LINE)  # , stderr=subprocess.DEVNULL)
+            COMMAND_LINE, timeout=20)  # , stderr=subprocess.DEVNULL)
         logging.info(f"Engine name: {self.engine.id['name']}")
         print("Initializing engine...")
         self.search = None
@@ -297,7 +298,7 @@ def main():
         pass
 
     logging.basicConfig(
-        filename=os.path.join(DATA_DIR, 'wccc.log'),
+        filename=os.path.join(LOGS_DIR, f'wccc-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log'),
         format=('%(levelname).1s%(asctime)s.%(msecs)03d %(name)s '
                 '%(filename)s:%(lineno)d] %(message)s'),
         datefmt='%m%d %H:%M:%S',

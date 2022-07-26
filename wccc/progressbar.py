@@ -2,6 +2,17 @@ import curses
 import logging
 
 BLOCK_UNICODE = ' ▏▎▍▌▋▊▉█'
+TICK_UNICODE = '▏🭰🭱🭲🭳🭴🭵▕'
+
+def TickBar(win, width, percentage, color):
+    if not (0 <= percentage <1):
+        return
+    value_bits = int(8*width*percentage)
+    left_width = value_bits // 8
+    right_width = width - left_width - 1
+    win.addstr(' ' * left_width, curses.color_pair(color))
+    win.addstr(TICK_UNICODE[value_bits % 8], curses.color_pair(color))
+    win.addstr(' ' * right_width, curses.color_pair(color))
 
 
 def ProgressBar(win, width, value, max_value, text, bar_color, remainder_color,
@@ -31,6 +42,7 @@ def WriteBarMeat(win, width, left_text, middle_text, right_text, color):
         f'{left_text}'
         f'{middle_text.center(width - len(left_text) - len(right_text))}'
         f'{right_text}', curses.color_pair(color))
+
 
 
 def WdlBar(win, width, w, d, l, white_bar, draw_bar, black_bar, white_to_draw,

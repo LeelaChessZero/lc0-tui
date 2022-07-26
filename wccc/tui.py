@@ -258,14 +258,14 @@ class ChessBoard(Widget):
 
             if cell in lastmove:
                 hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
-                self.win.addstr(row + 0, col, '┌─', curses.color_pair(11))
-                self.win.addstr(row + 0, col + self.CELL_WIDTH - 2, '─┐',
+                self.win.addstr(row + 0, col, '┌', curses.color_pair(11))
+                self.win.addstr(row + 0, col + self.CELL_WIDTH - 1, '┐',
                                 curses.color_pair(11))
                 self.win.addstr(row + 1, col, '│', curses.color_pair(11))
                 self.win.addstr(row + 1, col + self.CELL_WIDTH - 1, '│',
                                 curses.color_pair(11))
-                self.win.addstr(row + 2, col, '└─', curses.color_pair(11))
-                self.win.addstr(row + 2, col + self.CELL_WIDTH - 2, '─┘',
+                self.win.addstr(row + 2, col, '└', curses.color_pair(11))
+                self.win.addstr(row + 2, col + self.CELL_WIDTH - 1, '┘',
                                 curses.color_pair(11))
 
             if cell in [
@@ -489,7 +489,10 @@ class Thinking(Widget):
             progressbar.WdlBar(self.win, 45, move['wdl'].wins,
                                move['wdl'].draws, move['wdl'].losses, 12, 13,
                                14, 15, 16, 17)
-            self.win.addstr(i * 3 + 3, 0, " " * 45)
+            if 'score' in move and move['score'].score() is not None:
+              progressbar.TickBar(self.win, 47, move['score'].score() / 20000.0 + 0.5, 0)
+            else:
+              self.win.addstr(i * 3 + 3, 0, " " * 45)
         self.win.clrtobot()
         super().Draw()
 
