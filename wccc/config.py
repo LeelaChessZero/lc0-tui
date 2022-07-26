@@ -41,7 +41,9 @@ COMMAND_LINE = [
     #'--draw-score-white=-20', '--draw-score-black=7',
 # WHEN PLAYING BLACK
     #'--draw-score-black=-20', '--draw-score-white=7',
-    #'--draw-score-white=-60', '--draw-score-black=20',
+    '--draw-score-white=-15', '--draw-score-black=10',     # White against Ghinkgo
+    # '--draw-score-white=-25', '--draw-score-black=15',   # White against Baron
+    #'--draw-score-white=-100', '--draw-score-black=20',
     '--score-type=Q',
 ]
 

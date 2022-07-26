@@ -243,10 +243,16 @@ class Controller:
             if not info.get('pv', None):
                 continue
             move = info['pv'][0].uci()
+            board = self.state['board'].copy()
+            pv = []
+            for x in info['pv']:
+                pv.append(board.san(x))
+                board.push(x)
             thinking['curr']['moves'][move] = {
                 'score': info['score'].white() if 'score' in info else None,
                 'wdl': info['wdl'].white() if 'wdl' in info else None,
                 'nodes': info.get('nodes', 0),
+                'pv': pv,
             }
 
     def GetBestWdl(self):

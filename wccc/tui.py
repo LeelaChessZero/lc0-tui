@@ -354,10 +354,31 @@ class StatusBar(Widget):
             self.lasttime = new_time
         self.count += 1
         self.win.bkgdset(' ', curses.color_pair(5))
+        status_msg = self.state['statusbar']
+        pv = []
+        if not status_msg:
+            moveses = self.state['thinking'].get('curr', {}).get('moves', {})
+            if moveses:
+               moves = sorted(moveses.keys(),
+                       key=lambda x: (moveses[x]['nodes'], x),
+                       reverse=True)[0]
+               pv = moveses[moves].get('pv', [])
+            
         self.win.addstr(
             0, 0, f" %-{SCREEN_WIDTH-10}sFPS: %-5d" %
-            (self.state['statusbar'], self.fps))
-        self.win.noutrefresh()
+            (status_msg, self.fps))
+        if not status_msg:
+            black = self.state['board'].turn == chess.BLACK
+            total_sz = 3
+            self.win.addstr(0, 0, "PV:", curses.color_pair(5))
+            for x in pv:
+                if total_sz > SCREEN_WIDTH-15:
+                    break
+                self.win.addstr(' '+ x, curses.color_pair(5 if black else 22))
+                black = not black
+                total_sz += 1 + len(x)
+
+
         super().Draw()
 
 
@@ -489,8 +510,9 @@ class Thinking(Widget):
             progressbar.WdlBar(self.win, 45, move['wdl'].wins,
                                move['wdl'].draws, move['wdl'].losses, 12, 13,
                                14, 15, 16, 17)
+            self.win.move(i * 3 + 3, 0)
             if 'score' in move and move['score'].score() is not None:
-              progressbar.TickBar(self.win, 47, move['score'].score() / 20000.0 + 0.5, 0)
+              progressbar.TickBar(self.win, 45, move['score'].score() / 20000.0 + 0.5, 0)
             else:
               self.win.addstr(i * 3 + 3, 0, " " * 45)
         self.win.clrtobot()
@@ -781,7 +803,8 @@ class Tui:
         curses.init_pair(2, WHITE_PIECES, LIGHT_SQUARES)  # White on bright
         curses.init_pair(3, BLACK_PIECES, DARK_SQUARES)  # Black on dark
         curses.init_pair(4, BLACK_PIECES, LIGHT_SQUARES)  # Black on bright
-        curses.init_pair(5, 0, 33)  # Status bar
+        curses.init_pair(5, 0, 75)  # Status bar
+        curses.init_pair(22, 15, 75)  # Status bar white
         curses.init_pair(6, 15, 160)  # [FAIL]
         curses.init_pair(7, 15, 70)  # [OK]
         curses.init_pair(8, 196, 0)  # Logo
@@ -801,6 +824,8 @@ class Tui:
         curses.init_pair(19, 231, 56)  # Progress bar
         curses.init_pair(20, 56, 0)  # Progress bar remoinder
         curses.init_pair(21, 231, 0)  # Progress bar text
+
+        # 22 used for status bar.
 
         stdscr.nodelay(1)
         #curses.halfdelay(1)
