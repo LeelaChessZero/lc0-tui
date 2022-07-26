@@ -226,6 +226,7 @@ class ChessBoard(Widget):
             ]
 
         def DrawCell(cell):
+            square = chess.parse_square(cell)
             rank_idx = ord(cell[0]) - ord('a')
             file_idx = ord(cell[1]) - ord('1')
             is_dark = rank_idx % 2 == file_idx % 2
@@ -255,6 +256,13 @@ class ChessBoard(Widget):
             self.win.addstr(row + 0, col, top, attr)
             self.win.addstr(row + 1, col, mid, attr + curses.A_BOLD)
             self.win.addstr(row + 2, col, bot, attr)
+
+            pv = self.state['thinking'].get('curr', {}).get('pv', [])
+            if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square):
+                self.win.chgat(row+1, col+self.CELL_WIDTH-3, 2, curses.color_pair(25))
+
+            if len(pv) >= 2 and (pv[1].from_square == square or pv[1].to_square == square):
+                self.win.chgat(row+1, col+1, 2, curses.color_pair(26))
 
             if cell in lastmove:
                 hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
@@ -355,28 +363,23 @@ class StatusBar(Widget):
         self.count += 1
         self.win.bkgdset(' ', curses.color_pair(5))
         status_msg = self.state['statusbar']
-        pv = []
-        if not status_msg:
-            moveses = self.state['thinking'].get('curr', {}).get('moves', {})
-            if moveses:
-               moves = sorted(moveses.keys(),
-                       key=lambda x: (moveses[x]['nodes'], x),
-                       reverse=True)[0]
-               pv = moveses[moves].get('pv', [])
-            
         self.win.addstr(
             0, 0, f" %-{SCREEN_WIDTH-10}sFPS: %-5d" %
             (status_msg, self.fps))
         if not status_msg:
-            black = self.state['board'].turn == chess.BLACK
-            total_sz = 3
-            self.win.addstr(0, 0, "PV:", curses.color_pair(5))
-            for x in pv:
-                if total_sz > SCREEN_WIDTH-15:
-                    break
-                self.win.addstr(' '+ x, curses.color_pair(5 if black else 22))
-                black = not black
-                total_sz += 1 + len(x)
+               pv = self.state['thinking'].get('curr', {}).get('pv', [])
+               black = self.state['board'].turn == chess.BLACK
+               total_sz = 3
+               self.win.addstr(0, 0, "PV:", curses.color_pair(5))
+               board = self.state['board'].copy()
+               for x in pv:
+                    y = board.san(x)
+                    board.push(x)
+                    if total_sz > SCREEN_WIDTH-15:
+                        break
+                    self.win.addstr(' '+ y, curses.color_pair(5 if black else 22))
+                    black = not black
+                    total_sz += 1 + len(y)
 
 
         super().Draw()
@@ -829,6 +832,9 @@ class Tui:
 
         curses.init_pair(23, 84, 236) # Q tick, white
         curses.init_pair(24, 198, 235)   # Q tick, black
+
+        curses.init_pair(25, 160, 118)   # Current best move
+        curses.init_pair(26, 75, 131)   # Expected opponents answer
 
         stdscr.nodelay(1)
         #curses.halfdelay(1)
