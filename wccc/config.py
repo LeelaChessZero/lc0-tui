@@ -5,7 +5,7 @@ LC0_DIRECTORY = '/home/wccc/lc0/build/release'
 
 COMMAND_LINE = [
     './lc0',
-#    '--backend=random',
+    #'--backend=random',
     '--backend=multiplexing',
     '--backend-opts=a(backend=demux,(backend=cuda-fp16,gpu=0),(backend=cuda-fp16,gpu=1),(backend=cuda-fp16,gpu=2),(backend=cuda-fp16,gpu=3)),b(backend=demux,(backend=cuda-fp16,gpu=4),(backend=cuda-fp16,gpu=5),(backend=cuda-fp16,gpu=6),(backend=cuda-fp16,gpu=7))',
     #'--backend-opts=backend=cuda-fp16,(gpu=6),(gpu=7)',

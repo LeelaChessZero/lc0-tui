@@ -92,7 +92,7 @@ WHITE_PIECES = 15
 DARK_SQUARES = 94  # 2
 LIGHT_SQUARES = 172  # 3
 
-SCREEN_WIDTH = 168
+SCREEN_WIDTH = 169
 SCREEN_HEIGHT = 42
 
 BLACK_BG = 237
@@ -397,7 +397,7 @@ class Logo(Widget):
 class Engine(Widget):
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 4, 46, 1, 59)
+        super().__init__(parent, state, 4, 47, 1, 59)
 
     def Draw(self):
         self.win.addstr(0, 0, "Engine: ")
@@ -406,15 +406,15 @@ class Engine(Widget):
             self.win.addstr("[ ACTIVE  ]", curses.color_pair(7))
         else:
             self.win.addstr("[ STOPPED ]", curses.color_pair(6))
-        self.win.addstr("   (Shift+E) to start/stop")
+        self.win.addstr("    (Shift+E) to start/stop")
         self.win.addstr(1, 0, "Status: ")
-        self.win.addstr(self.state['enginestatus'][:50], curses.color_pair(9))
+        self.win.addstr(self.state['enginestatus'][:51], curses.color_pair(9))
         self.win.clrtoeol()
         self.win.addstr(2, 0, "White (z): ")
         self.win.addstr(
             '[ timed  ]' if tim[0] else '[infinite]',
             curses.color_pair(7 if tim[0] != self.state['flipped'] else 6))
-        self.win.addstr("   Black (x): ")
+        self.win.addstr("    Black (x): ")
         self.win.addstr(
             '[ timed  ]' if tim[1] else '[infinite]',
             curses.color_pair(7 if tim[1] == self.state['flipped'] else 6))
@@ -472,7 +472,7 @@ class Thinking(Widget):
     NUM_MOVES = 12
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, self.NUM_MOVES * 3 + 1, 47, 5, 59)
+        super().__init__(parent, state, self.NUM_MOVES * 3 + 1, 48, 5, 59)
 
     def Draw(self):
         self.win.addstr(0, 0, "Move  Nodes", curses.color_pair(9))
@@ -491,7 +491,7 @@ class Thinking(Widget):
             san = self.state['board'].san(chess.Move.from_uci(m))
             self.win.addstr(i * 3 + 1, 0, f"{san:6}")
             progressbar.ProgressBar(win=self.win,
-                                    width=31,
+                                    width=32,
                                     value=move['nodes'],
                                     max_value=max_n,
                                     text=f'N={move["nodes"]}',
@@ -507,14 +507,14 @@ class Thinking(Widget):
                     self.state['thinking']['prev']['time'])
                 self.win.addstr(f" +{ShortenNum(delta, 4)}/s".ljust(8))
             self.win.move(i * 3 + 2, 0)
-            progressbar.WdlBar(self.win, 45, move['wdl'].wins,
+            progressbar.WdlBar(self.win, 46, move['wdl'].wins,
                                move['wdl'].draws, move['wdl'].losses, 12, 13,
                                14, 15, 16, 17)
             self.win.move(i * 3 + 3, 0)
             if 'score' in move and move['score'].score() is not None:
-              progressbar.TickBar(self.win, 45, move['score'].score() / 20000.0 + 0.5, 0)
+              progressbar.TickBar(self.win, 46, move['score'].score() / 20000.0 + 0.5, 24, 23)
             else:
-              self.win.addstr(i * 3 + 3, 0, " " * 45)
+              self.win.addstr(i * 3 + 3, 0, " " * 46)
         self.win.clrtobot()
         super().Draw()
 
@@ -652,7 +652,7 @@ class MoveList(Widget):
     NUM_PLY = 40
 
     def __init__(self, parent, state):
-        super().__init__(parent, state, 1 + self.NUM_PLY, 65, 1, 104)
+        super().__init__(parent, state, 1 + self.NUM_PLY, 65, 1, 105)
 
     def Draw(self):
         self.win.addstr(0, 3, "Moves:", curses.color_pair(9))
@@ -826,6 +826,9 @@ class Tui:
         curses.init_pair(21, 231, 0)  # Progress bar text
 
         # 22 used for status bar.
+
+        curses.init_pair(23, 84, 236) # Q tick, white
+        curses.init_pair(24, 198, 235)   # Q tick, black
 
         stdscr.nodelay(1)
         #curses.halfdelay(1)
