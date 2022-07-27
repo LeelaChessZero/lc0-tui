@@ -173,11 +173,11 @@ class Controller:
         logging.info("Manually adding move %s" % nextmove)
         try:
             self.state['board'].push_uci(nextmove)
-            self.state['move_info'].append(self.GetBestWdl())
-            self.state['thinking'] = {}
         except:
             logging.exception("Bad move: %s" % nextmove)
             return
+        self.state['move_info'].append(self.GetWdlForMove(nextmove))
+        self.state['thinking'] = {}
 
         self.state['timer'][idx] += self.GetIncrement(
             not self.state['board'].turn)
@@ -258,6 +258,15 @@ class Controller:
         return max(self.state['thinking']['curr']['moves'].values(),
                    key=lambda x: x['nodes']).get('wdl', '(unknown)')
 
+
+    def GetWdlForMove(self, move):
+        if 'curr' not in self.state['thinking']: return "(unknown, not thinking)"
+        if not self.state['thinking']['curr'].get('moves'):
+            return "(unknown, no moves)"
+        if move not in self.state['thinking']['curr']['moves']:
+            return "(didn't think about that move)"
+        return self.state['thinking']['curr']['moves'][move].get('wdl', '(no wdl)')
+
     def UpdateOnSearchDone(self):
         if not self.search:
             return
@@ -274,7 +283,7 @@ class Controller:
         self.state['movetimer'][1 - idx] = 0
         best_move = self.search.wait()
         self.state['board'].push(best_move.move)
-        self.state['move_info'].append(self.GetBestWdl())
+        self.state['move_info'].append(self.GetWdlForMove(best_move.move.uci()))
         self.state['nextmove'] = ''
         self.state['thinking'] = {}
         self.state['enginestatus'] = "Stopped."
