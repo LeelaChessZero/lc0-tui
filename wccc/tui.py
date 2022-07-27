@@ -205,6 +205,11 @@ class HelpPane(Widget):
         return True
 
 
+def GetStrobe(val, on, off, offset):
+    val += on+off - offset
+    val %= on+off
+    return val < on
+
 class ChessBoard(Widget):
     CELL_WIDTH = 7
     CELL_HEIGHT = 3
@@ -258,10 +263,11 @@ class ChessBoard(Widget):
             self.win.addstr(row + 2, col, bot, attr)
 
             pv = self.state['thinking'].get('curr', {}).get('pv', [])
-            if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square):
+            mt = self.state['movetimer'][0 if self.state['board'].turn else 1]
+            if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square) and GetStrobe(mt, 1.7, 0.6, 0.0):
                 self.win.chgat(row+1, col+self.CELL_WIDTH-3, 2, curses.color_pair(25))
 
-            if len(pv) >= 2 and (pv[1].from_square == square or pv[1].to_square == square):
+            if len(pv) >= 2 and (pv[1].from_square == square or pv[1].to_square == square): # and GetStrobe(mt, 2.5, 0.9, 0.13):
                 self.win.chgat(row+1, col+1, 2, curses.color_pair(26))
 
             if cell in lastmove:
