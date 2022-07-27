@@ -264,11 +264,13 @@ class ChessBoard(Widget):
 
             pv = self.state['thinking'].get('curr', {}).get('pv', [])
             mt = self.state['movetimer'][0 if self.state['board'].turn else 1]
+            our_move = (self.state['board'].turn == chess.BLACK) == self.state['flipped']
+            move_indicator_offset = 2 if our_move else 0
             if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square) and GetStrobe(mt, 1.7, 0.6, 0.0):
-                self.win.chgat(row+1, col+self.CELL_WIDTH-3, 2, curses.color_pair(25))
+                self.win.chgat(row+move_indicator_offset, col+self.CELL_WIDTH-3, 2, curses.color_pair(25))
 
             if len(pv) >= 2 and (pv[1].from_square == square or pv[1].to_square == square): # and GetStrobe(mt, 2.5, 0.9, 0.13):
-                self.win.chgat(row+1, col+1, 2, curses.color_pair(26))
+                self.win.chgat(row+2-move_indicator_offset, col+1, 2, curses.color_pair(26))
 
             if cell in lastmove:
                 hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
@@ -701,6 +703,11 @@ class Status(Widget):
             self.win.addstr("[ DRAW: STALEMATE ]", curses.color_pair(7))
         elif self.state['board'].is_insufficient_material():
             self.win.addstr("[ DRAW: NO MATERIAL ]", curses.color_pair(7))
+        elif self.state['board'].is_fifty_moves():
+            self.win.addstr("[ DRAW: FIFTY MOVES ]", curses.color_pair(7))
+        elif self.state['board'].is_repetition(3):
+            self.win.addstr("[ DRAW: THREEFOLD REPETITION ]",
+                            curses.color_pair(7))
         elif self.state['board'].can_claim_fifty_moves():
             self.win.addstr("[ DRAW POSSIBLE: FIFTY MOVES ]",
                             curses.color_pair(6))
