@@ -524,6 +524,9 @@ class Thinking(Widget):
             self.win.move(i * 3 + 3, 0)
             if 'score' in move and move['score'].score() is not None:
               progressbar.TickBar(self.win, 46, move['score'].score() / 20000.0 + 0.5, 24, 23)
+            elif 'score' in move and move['score'].mate() is not None:
+              self.win.addstr(i * 3 + 3, 0, " " * 46)
+              self.win.addstr(i * 3 + 3, 0, " Checkmate in %d" % (abs(move['score'].mate())))
             else:
               self.win.addstr(i * 3 + 3, 0, " " * 46)
         self.win.clrtobot()
@@ -667,7 +670,8 @@ class MoveList(Widget):
 
     def Draw(self):
         self.win.addstr(0, 3, "Moves:", curses.color_pair(9))
-        res = []
+        moves = []
+        wdls = []
         brd = self.state['board'].root()
         for x, y in zip(self.state['board'].move_stack,
                         self.state['move_info']):
@@ -677,13 +681,26 @@ class MoveList(Widget):
                 hdr = '  ...'
             move = brd.san(x)
             brd.push(x)
-            res.append((hdr + move, y))
+            moves.append(hdr + move)
+            wdls.append(y)
+        if wdls:
+          moveses = self.state['thinking'].get('curr', {}).get('moves', {})
+          m = sorted(moveses.keys(),
+                       key=lambda x: (moveses[x]['nodes'], x),
+                       reverse=True)[:1]
+          wdls.pop(0)
+          if m:
+             wdls.append(moveses[m[0]]['wdl'])
+          else:
+             wdls.append('(not thinking yet)')
+
+        res = list(zip(moves, wdls))
 
         for i, (move, info) in enumerate(res[-self.NUM_PLY:]):
             self.win.addstr(i + 1, 0, "%-12s" % move)
             if isinstance(info, str):
                 self.win.addstr(info.ljust(52))
-            else:
+            elif isinstance(info, chess.engine.Wdl):
                 progressbar.WdlBar(self.win, 52, info.wins, info.draws,
                                    info.losses, 12, 13, 14, 15, 16, 17)
         self.win.clrtobot()

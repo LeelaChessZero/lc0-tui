@@ -176,7 +176,7 @@ class Controller:
         except:
             logging.exception("Bad move: %s" % nextmove)
             return
-        self.state['move_info'].append(self.GetWdlForMove(nextmove))
+        self.state['move_info'].append(self.GetBestWdl())
         self.state['thinking'] = {}
 
         self.state['timer'][idx] += self.GetIncrement(
@@ -283,7 +283,7 @@ class Controller:
         self.state['movetimer'][1 - idx] = 0
         best_move = self.search.wait()
         self.state['board'].push(best_move.move)
-        self.state['move_info'].append(self.GetWdlForMove(best_move.move.uci()))
+        self.state['move_info'].append(self.GetBestWdl())
         self.state['nextmove'] = ''
         self.state['thinking'] = {}
         self.state['enginestatus'] = "Stopped."
