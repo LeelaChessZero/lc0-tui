@@ -266,11 +266,15 @@ class ChessBoard(Widget):
             mt = self.state['movetimer'][0 if self.state['board'].turn else 1]
             our_move = (self.state['board'].turn == chess.BLACK) == self.state['flipped']
             move_indicator_offset = 2 if our_move else 0
-            if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square) and GetStrobe(mt, 1.7, 0.6, 0.0):
-                self.win.chgat(row+move_indicator_offset, col+self.CELL_WIDTH-3, 2, curses.color_pair(25))
+            if self.state['moveready'] and self.state['movenotify']:
+                if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square):
+                    self.win.chgat(row+2-move_indicator_offset, col+1, 2, curses.color_pair(26))
+            else:
+                if len(pv) >= 1 and (pv[0].from_square == square or pv[0].to_square == square) and GetStrobe(mt, 1.7, 0.6, 0.0):
+                    self.win.chgat(row+move_indicator_offset, col+self.CELL_WIDTH-3, 2, curses.color_pair(25))
 
-            if len(pv) >= 2 and (pv[1].from_square == square or pv[1].to_square == square): # and GetStrobe(mt, 2.5, 0.9, 0.13):
-                self.win.chgat(row+2-move_indicator_offset, col+1, 2, curses.color_pair(26))
+                if len(pv) >= 2 and (pv[1].from_square == square or pv[1].to_square == square): # and GetStrobe(mt, 2.5, 0.9, 0.13):
+                    self.win.chgat(row+2-move_indicator_offset, col+1, 2, curses.color_pair(26))
 
             if cell in lastmove:
                 hor = '+' + '-' * (self.CELL_WIDTH - 2) + '+'
@@ -843,7 +847,7 @@ class Tui:
         curses.init_pair(8, 196, 0)  # Logo
         curses.init_pair(9, 80, 0)  # Bright white on black
         curses.init_pair(10, 82, 0)  # Past move from/to marker, move text
-        curses.init_pair(11, 196, 18)  # Move selector from/to marker
+        curses.init_pair(11, 18, 199)  # Move selector from/to marker
 
         curses.init_pair(12, BLACK_TEXT, WHITE_BG)  # White block
         curses.init_pair(13, WHITE_TEXT, DRAW_BG)  # Draw block
