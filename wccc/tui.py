@@ -864,7 +864,7 @@ class Tui:
         curses.init_pair(24, 198, 235)   # Q tick, black
 
         curses.init_pair(25, 160, 118)   # Current best move
-        curses.init_pair(26, 75, 131)   # Expected opponents answer
+        curses.init_pair(26, 131, 75)   # Expected opponents answer
 
         stdscr.nodelay(1)
         #curses.halfdelay(1)
