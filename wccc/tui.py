@@ -736,7 +736,7 @@ class Status(Widget):
             self.win.addstr("[ DRAW POSSIBLE: THREEFOLD REP ]",
                             curses.color_pair(6))
         else:
-            self.win.addstr("game is not finished.")
+            self.win.addstr(config.STATUS or "game is not finished.")
         self.win.clrtoeol()
         self.win.addstr(1, 0, "Rule50 ply:", curses.color_pair(9))
         self.win.addstr("%3d" % self.state['board'].halfmove_clock)
