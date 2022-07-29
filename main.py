@@ -233,8 +233,7 @@ class Controller:
 
         while not self.search.empty():
             info = self.search.get()
-            if 'curr' not in thinking or info['time'] > thinking['curr'][
-                    'time']:
+            if 'curr' not in thinking or ('time' in info and info['time'] > thinking['curr']['time']):   
                 thinking['prev'] = thinking.get('curr', {'time': 0})
                 thinking['curr'] = {"time": info['time'], "moves": {}, "pv":[]}
             for key in ['nps', 'depth', 'seldepth']:
